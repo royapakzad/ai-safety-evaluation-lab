@@ -2,7 +2,6 @@
 
 
 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -489,11 +488,18 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
 
     setIsLoading(true);
     try {
+        console.log('🚀 About to save evaluation, isUpdating:', isUpdating);
+        console.log('🚀 RecordData being saved:', recordData);
+        
         if (isUpdating) {
+            console.log('🚀 Calling updateEvaluation...');
             await db.updateEvaluation(recordData);
         } else {
+            console.log('🚀 Calling addEvaluation...');
             await db.addEvaluation(recordData);
         }
+        
+        console.log('🚀 Save completed successfully!');
 
         const updatedEvals = await db.getEvaluations(currentUser);
         setAllEvaluations(updatedEvals.filter(ev => ev.labType === 'reasoning') as ReasoningEvaluationRecord[]);
@@ -508,7 +514,7 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
                 let finalRecord = { ...recordData };
                 try {
                     const llmScores = await evaluateWithLlm(recordData);
-                    finalRecord = { ...finalRecord, llmScores, llmEvaluationStatus: 'completed' };
+                    finalRecord = { ...finalRecord, llmScores, llmEvaluationStatus: 'completed', llmEvaluationError: null };
                 } catch (err) {
                     console.error("LLM Evaluation Failed:", err);
                     const errorMsg = err instanceof Error ? err.message : String(err);
