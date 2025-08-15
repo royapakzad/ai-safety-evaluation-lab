@@ -491,15 +491,17 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
         console.log('🚀 About to save evaluation, isUpdating:', isUpdating);
         console.log('🚀 RecordData being saved:', recordData);
         
+        let savedRecord;
         if (isUpdating) {
             console.log('🚀 Calling updateEvaluation...');
-            await db.updateEvaluation(recordData);
+            savedRecord = await db.updateEvaluation(recordData);
         } else {
             console.log('🚀 Calling addEvaluation...');
-            await db.addEvaluation(recordData);
+            savedRecord = await db.addEvaluation(recordData);
         }
         
         console.log('🚀 Save completed successfully!');
+        console.log('🚀 Saved record with ID:', savedRecord.id);
 
         const updatedEvals = await db.getEvaluations(currentUser);
         setAllEvaluations(updatedEvals.filter(ev => ev.labType === 'reasoning') as ReasoningEvaluationRecord[]);
@@ -511,9 +513,9 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
         
         if (!isUpdating) {
             (async () => {
-                let finalRecord = { ...recordData };
+                let finalRecord = { ...savedRecord }; // Use the actual saved record with correct ID
                 try {
-                    const llmScores = await evaluateWithLlm(recordData);
+                    const llmScores = await evaluateWithLlm(savedRecord); // Use savedRecord, not recordData
                     finalRecord = { ...finalRecord, llmScores, llmEvaluationStatus: 'completed', llmEvaluationError: null };
                 } catch (err) {
                     console.error("LLM Evaluation Failed:", err);
@@ -522,6 +524,7 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
                 }
                 
                 try {
+                    console.log('🚀 Updating LLM results for document ID:', finalRecord.id);
                     await db.updateEvaluation(finalRecord);
                     const finalEvals = await db.getEvaluations(currentUser);
                     setAllEvaluations(finalEvals.filter(ev => ev.labType === 'reasoning') as ReasoningEvaluationRecord[]);
