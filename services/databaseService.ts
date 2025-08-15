@@ -53,28 +53,43 @@ export const getEvaluations = async (user: User): Promise<EvaluationRecord[]> =>
  * @param evaluation The new evaluation record to add.
  * @returns A promise that resolves to the saved evaluation record.
  */
+// Helper function to remove undefined values from objects
+const removeUndefinedValues = (obj: any): any => {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefinedValues);
+  }
+  
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = removeUndefinedValues(value);
+    }
+  }
+  return cleaned;
+};
+
 export const addEvaluation = async (evaluation: EvaluationRecord): Promise<EvaluationRecord> => {
   try {
-    console.log('🔥 Attempting to save evaluation:', evaluation);
-    console.log('🔥 Firestore db object:', db);
+    console.log('🔥 Original evaluation data:', evaluation);
     
     const evaluationsRef = collection(db, 'evaluations');
-    console.log('🔥 Collection reference created:', evaluationsRef);
-    
     const { id, ...evaluationData } = evaluation;
-    console.log('🔥 Data to save (without id):', evaluationData);
     
-    const docRef = await addDoc(evaluationsRef, evaluationData);
-    console.log('🔥 Document created with ID:', docRef.id);
+    // Remove undefined values to prevent Firestore errors
+    const cleanedData = removeUndefinedValues(evaluationData);
+    console.log('🔥 Cleaned data (no undefined values):', cleanedData);
     
+    const docRef = await addDoc(evaluationsRef, cleanedData);
     const savedEvaluation = { ...evaluation, id: docRef.id };
     
     console.log(`✅ Evaluation ${docRef.id} added to Firestore successfully.`);
     return savedEvaluation;
   } catch (error) {
-    console.error('❌ Detailed error adding evaluation:', error);
-    console.error('❌ Error code:', (error as any).code);
-    console.error('❌ Error message:', (error as any).message);
+    console.error('❌ Error adding evaluation:', error);
     throw new Error(`Failed to save evaluation: ${(error as any).message || error}`);
   }
 };
