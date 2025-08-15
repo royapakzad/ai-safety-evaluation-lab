@@ -1,120 +1,171 @@
 // services/databaseService.ts
-import { EvaluationRecord, User, ReasoningEvaluationRecord } from '../types';
-import { EVALUATIONS_KEY } from '../constants';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where,
+  orderBy 
+} from 'firebase/firestore';
+import { db, auth } from '../firebase.config';
+import { EvaluationRecord, User } from '../types';
 
 /**
- * --- DEVELOPER NOTE ---
- * This is a MOCK database service that uses localStorage to simulate a real backend.
- * For true cross-device data persistence, replace the implementation of these
- * functions with actual API calls to a central database (e.g., Firebase, Supabase, or a custom backend).
- * The function signatures are designed to be async to mimic network requests.
- */
-
-const FAKE_NETWORK_DELAY = 300; // ms
-
-const getAllEvaluationsFromStorage = (): EvaluationRecord[] => {
-  try {
-    const evaluationsJson = localStorage.getItem(EVALUATIONS_KEY);
-    if (!evaluationsJson) return [];
-    
-    const evaluations = JSON.parse(evaluationsJson) as EvaluationRecord[];
-    // Normalize old data structures if necessary
-    return evaluations.map(ev => {
-        // Ensure labType exists for older records
-        const labType = ev.labType || ((ev as any).scores?.inconsistency ? 'multilingual' : 'reasoning');
-        // Ensure userEmail exists
-        const userEmail = ev.userEmail || (ev as any).user || 'unknown@example.com';
-        return { ...ev, labType, userEmail };
-    }) as EvaluationRecord[];
-  } catch (error) {
-    console.error("Error reading from mock database (localStorage):", error);
-    return [];
-  }
-};
-
-const saveAllEvaluationsToStorage = (evaluations: EvaluationRecord[]): void => {
-  try {
-    localStorage.setItem(EVALUATIONS_KEY, JSON.stringify(evaluations));
-  } catch (error) {
-    console.error("Error writing to mock database (localStorage):", error);
-    // Optionally, alert the user if storage is full
-    // alert("Failed to save data. Your browser's storage may be full.");
-  }
-};
-
-/**
- * Fetches evaluations from the database.
+ * Fetches evaluations from Firestore.
  * Filters evaluations based on the user's role.
  * @param user The current user. Admins get all evaluations, evaluators get their own.
  * @returns A promise that resolves to an array of EvaluationRecords.
  */
 export const getEvaluations = async (user: User): Promise<EvaluationRecord[]> => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      const allEvaluations = getAllEvaluationsFromStorage();
-      if (user.role === 'admin') {
-        resolve(allEvaluations);
-      } else {
-        const userEvaluations = allEvaluations.filter(ev => ev.userEmail === user.email);
-        resolve(userEvaluations);
-      }
-    }, FAKE_NETWORK_DELAY);
-  });
+  try {
+    console.log('🔥 === STARTING EVALUATION FETCH ===');
+    console.log('🔥 Firebase app config:', db?.app?.options);
+    console.log('🔥 Current auth user:', auth?.currentUser?.email);
+    console.log('🔥 Fetching evaluations for user:', user);
+    
+    const evaluationsRef = collection(db, 'evaluations');
+    console.log('🔥 Collection reference created:', evaluationsRef);
+    
+    let q;
+    
+    if (user.role === 'admin') {
+      console.log('🔥 Admin user - fetching all evaluations');
+      q = query(evaluationsRef, orderBy('timestamp', 'desc'));
+    } else {
+      console.log('🔥 Regular user - fetching evaluations for email:', user.email);
+      q = query(
+        evaluationsRef, 
+        where('userEmail', '==', user.email),
+        orderBy('timestamp', 'desc')
+      );
+    }
+    
+    console.log('🔥 Executing query...');
+    const querySnapshot = await getDocs(q);
+    console.log('🔥 Query completed, documents found:', querySnapshot.size);
+    
+    const evaluations: EvaluationRecord[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      console.log('🔥 Processing document:', doc.id, doc.data());
+      evaluations.push({ ...doc.data(), id: doc.id } as EvaluationRecord);
+    });
+    
+    console.log('🔥 Final evaluations array:', evaluations);
+    console.log('🔥 === EVALUATION FETCH COMPLETE ===');
+    return evaluations;
+  } catch (error) {
+    console.error('❌ === EVALUATION FETCH FAILED ===');
+    console.error('❌ Detailed error fetching evaluations:', error);
+    console.error('❌ Error name:', (error as any).name);
+    console.error('❌ Error code:', (error as any).code);
+    console.error('❌ Error message:', (error as any).message);
+    console.error('❌ Auth state:', auth?.currentUser ? 'Authenticated' : 'Not authenticated');
+    throw new Error(`Failed to fetch evaluations: ${(error as any).message || error}`);
+  }
 };
 
 /**
- * Saves a new evaluation to the database.
+ * Saves a new evaluation to Firestore.
  * @param evaluation The new evaluation record to add.
  * @returns A promise that resolves to the saved evaluation record.
  */
+// Helper function to remove undefined values from objects
+const removeUndefinedValues = (obj: any): any => {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefinedValues);
+  }
+  
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = removeUndefinedValues(value);
+    }
+  }
+  return cleaned;
+};
+
 export const addEvaluation = async (evaluation: EvaluationRecord): Promise<EvaluationRecord> => {
-   return new Promise(resolve => {
-    setTimeout(() => {
-      const allEvaluations = getAllEvaluationsFromStorage();
-      const updatedEvaluations = [...allEvaluations, evaluation];
-      saveAllEvaluationsToStorage(updatedEvaluations);
-      console.log(`(Mock DB) Evaluation ${evaluation.id} added.`);
-      resolve(evaluation);
-    }, FAKE_NETWORK_DELAY);
-  });
+  try {
+    console.log('🔥 === STARTING EVALUATION SAVE ===');
+    console.log('🔥 Firebase app config:', db?.app?.options);
+    console.log('🔥 Current auth user:', auth?.currentUser?.email);
+    console.log('🔥 Original evaluation data:', evaluation);
+    console.log('🔥 Current user email in data:', evaluation.userEmail);
+    
+    // Test Firebase connection first
+    console.log('🔥 Testing Firebase connection...');
+    const testRef = collection(db, 'evaluations');
+    console.log('🔥 Collection reference created successfully:', testRef.path);
+    
+    const { id, ...evaluationData } = evaluation;
+    
+    // Remove undefined values to prevent Firestore errors
+    const cleanedData = removeUndefinedValues(evaluationData);
+    console.log('🔥 Cleaned data (no undefined values):', cleanedData);
+    console.log('🔥 About to call addDoc...');
+    
+    const docRef = await addDoc(testRef, cleanedData);
+    console.log('🔥 addDoc completed successfully, document ID:', docRef.id);
+    
+    const savedEvaluation = { ...evaluation, id: docRef.id };
+    
+    console.log(`✅ Evaluation ${docRef.id} added to Firestore successfully.`);
+    console.log('🔥 === EVALUATION SAVE COMPLETE ===');
+    return savedEvaluation;
+  } catch (error) {
+    console.error('❌ === EVALUATION SAVE FAILED ===');
+    console.error('❌ Error adding evaluation:', error);
+    console.error('❌ Error name:', (error as any).name);
+    console.error('❌ Error code:', (error as any).code);
+    console.error('❌ Error message:', (error as any).message);
+    console.error('❌ Full error object:', error);
+    console.error('❌ Auth state:', auth?.currentUser ? 'Authenticated' : 'Not authenticated');
+    throw new Error(`Failed to save evaluation: ${(error as any).message || error}`);
+  }
 };
 
 
 /**
- * Updates an existing evaluation in the database.
+ * Updates an existing evaluation in Firestore.
  * @param updatedEvaluation The evaluation record with updates.
  * @returns A promise that resolves to the updated evaluation record.
  */
 export const updateEvaluation = async (updatedEvaluation: EvaluationRecord): Promise<EvaluationRecord> => {
-   return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      let allEvaluations = getAllEvaluationsFromStorage();
-      const index = allEvaluations.findIndex(ev => ev.id === updatedEvaluation.id);
-      if (index === -1) {
-        console.error("Evaluation not found for update:", updatedEvaluation.id);
-        return reject(new Error("Evaluation not found for update."));
-      }
-      allEvaluations[index] = updatedEvaluation;
-      saveAllEvaluationsToStorage(allEvaluations);
-      console.log(`(Mock DB) Evaluation ${updatedEvaluation.id} updated.`);
-      resolve(updatedEvaluation);
-    }, FAKE_NETWORK_DELAY);
-  });
+  try {
+    const { id, ...evaluationData } = updatedEvaluation;
+    const docRef = doc(db, 'evaluations', id);
+    
+    await updateDoc(docRef, evaluationData);
+    
+    console.log(`Evaluation ${id} updated in Firestore.`);
+    return updatedEvaluation;
+  } catch (error) {
+    console.error('Error updating evaluation:', error);
+    throw new Error('Failed to update evaluation');
+  }
 };
 
 /**
- * Deletes an evaluation from the database.
+ * Deletes an evaluation from Firestore.
  * @param evaluationId The ID of the evaluation to delete.
  * @returns A promise that resolves when the operation is complete.
  */
 export const deleteEvaluation = async (evaluationId: string): Promise<void> => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      const allEvaluations = getAllEvaluationsFromStorage();
-      const updatedEvaluations = allEvaluations.filter(ev => ev.id !== evaluationId);
-      saveAllEvaluationsToStorage(updatedEvaluations);
-      console.log(`(Mock DB) Evaluation ${evaluationId} deleted.`);
-      resolve();
-    }, FAKE_NETWORK_DELAY);
-  });
+  try {
+    const docRef = doc(db, 'evaluations', evaluationId);
+    await deleteDoc(docRef);
+    
+    console.log(`Evaluation ${evaluationId} deleted from Firestore.`);
+  } catch (error) {
+    console.error('Error deleting evaluation:', error);
+    throw new Error('Failed to delete evaluation');
+  }
 };
