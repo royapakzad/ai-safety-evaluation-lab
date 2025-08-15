@@ -6,6 +6,7 @@ import {
 } from './constants';
 import * as config from './env.js'; // Import API keys from env.js
 import { onAuthStateChange, signIn, signOut, AuthState } from './services/authService';
+import { db } from './firebase.config';
 import Login from './components/PasswordGate';
 import Header from './components/Header';
 import ApiKeyWarning from './components/ApiKeyWarning';
@@ -58,7 +59,12 @@ const App: React.FC = () => {
 
   // Firebase Auth state listener
   useEffect(() => {
+    // Test Firebase connection
+    console.log('🔥 Firebase initialized:', db ? '✅ Connected' : '❌ Failed');
+    console.log('🔥 Project ID:', db?.app?.options?.projectId);
+    
     const unsubscribe = onAuthStateChange(({ user, loading }: AuthState) => {
+      console.log('🔥 Auth state changed:', { user: user?.email, loading });
       setCurrentUser(user);
       setAuthLoading(loading);
     });
