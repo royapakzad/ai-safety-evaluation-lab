@@ -8,12 +8,12 @@ import { getFirestore } from 'firebase/firestore';
 // You can find this in your Firebase Console -> Project Settings -> General -> Your apps
 // Your actual Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBKoZEN98-mn5gbi5PiF7s-CgDiYsc-OAQ",
-  authDomain: "multilingual-ai-evaluation.firebaseapp.com",
-  projectId: "multilingual-ai-evaluation",
-  storageBucket: "multilingual-ai-evaluation.firebasestorage.app",
-  messagingSenderId: "1026821613424",
-  appId: "1:1026821613424:web:e5bd1c2500d38ec27a51b5"
+  apiKey: process.env.FIREBASE_API_KEY || "AIzaSyBKoZEN98-mn5gbi5PiF7s-CgDiYsc-OAQ",
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "multilingual-ai-evaluation.firebaseapp.com",
+  projectId: process.env.FIREBASE_PROJECT_ID || "multilingual-ai-evaluation",
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "multilingual-ai-evaluation.firebasestorage.app",
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "1026821613424",
+  appId: process.env.FIREBASE_APP_ID || "1:1026821613424:web:e5bd1c2500d38ec27a51b5"
 };
 
 // Initialize Firebase
