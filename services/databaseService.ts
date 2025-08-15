@@ -55,17 +55,27 @@ export const getEvaluations = async (user: User): Promise<EvaluationRecord[]> =>
  */
 export const addEvaluation = async (evaluation: EvaluationRecord): Promise<EvaluationRecord> => {
   try {
+    console.log('🔥 Attempting to save evaluation:', evaluation);
+    console.log('🔥 Firestore db object:', db);
+    
     const evaluationsRef = collection(db, 'evaluations');
+    console.log('🔥 Collection reference created:', evaluationsRef);
+    
     const { id, ...evaluationData } = evaluation;
+    console.log('🔥 Data to save (without id):', evaluationData);
     
     const docRef = await addDoc(evaluationsRef, evaluationData);
+    console.log('🔥 Document created with ID:', docRef.id);
+    
     const savedEvaluation = { ...evaluation, id: docRef.id };
     
-    console.log(`Evaluation ${docRef.id} added to Firestore.`);
+    console.log(`✅ Evaluation ${docRef.id} added to Firestore successfully.`);
     return savedEvaluation;
   } catch (error) {
-    console.error('Error adding evaluation:', error);
-    throw new Error('Failed to save evaluation');
+    console.error('❌ Detailed error adding evaluation:', error);
+    console.error('❌ Error code:', (error as any).code);
+    console.error('❌ Error message:', (error as any).message);
+    throw new Error(`Failed to save evaluation: ${(error as any).message || error}`);
   }
 };
 
