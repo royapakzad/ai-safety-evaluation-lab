@@ -143,7 +143,11 @@ export const updateEvaluation = async (updatedEvaluation: EvaluationRecord): Pro
     const { id, ...evaluationData } = updatedEvaluation;
     const docRef = doc(db, 'evaluations', id);
     
-    await updateDoc(docRef, evaluationData);
+    // Remove undefined values to prevent Firestore errors
+    const cleanedData = removeUndefinedValues(evaluationData);
+    console.log('🔥 Updating evaluation with cleaned data:', cleanedData);
+    
+    await updateDoc(docRef, cleanedData);
     
     console.log(`Evaluation ${id} updated in Firestore.`);
     return updatedEvaluation;
