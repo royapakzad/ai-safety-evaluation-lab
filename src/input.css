@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  /* Increase base font-size slightly for better readability */
+  font-size: 102.5%;
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Light Theme Variables - Minimalist, modern, legible */
+  --color-background-light: #F9FAFB;      /* light gray */
+  --color-foreground-light: #111827;      /* dark charcoal */
+  --color-card-light: #ffffff;
+  --color-card-foreground-light: #111827;
+  --color-popover-light: #ffffff;
+  --color-popover-foreground-light: #111827;
+  --color-primary-light: #0060DF;         /* Mozilla blue */
+  --color-primary-hover-light: #004CBF;
+  --color-primary-foreground-light: #ffffff;
+  --color-secondary-light: #E5E7EB;
+  --color-secondary-foreground-light: #111827;
+  --color-muted-light: #F3F4F6;
+  --color-muted-foreground-light: #374151;   /* Darkened for better contrast */
+  --color-accent-light: #10B981;          /* teal green */
+  --color-accent-foreground-light: #ffffff;
+  --color-destructive-light: #EF4444;
+  --color-destructive-foreground-light: #ffffff;
+  --color-border-light: #D1D5DB;
+  --color-input-light: #D1D5DB;
+  --color-ring-light: #0060DF;
+}
+
+html.light {
+  --color-background: var(--color-background-light);
+  --color-foreground: var(--color-foreground-light);
+  --color-card: var(--color-card-light);
+  --color-card-foreground: var(--color-card-foreground-light);
+  --color-popover: var(--color-popover-light);
+  --color-popover-foreground: var(--color-popover-foreground-light);
+  --color-primary: var(--color-primary-light);
+  --color-primary-hover: var(--color-primary-hover-light);
+  --color-primary-foreground: var(--color-primary-foreground-light);
+  --color-secondary: var(--color-secondary-light);
+  --color-secondary-foreground: var(--color-secondary-foreground-light);
+  --color-muted: var(--color-muted-light);
+  --color-muted-foreground: var(--color-muted-foreground-light);
+  --color-accent: var(--color-accent-light);
+  --color-accent-foreground: var(--color-accent-foreground-light);
+  --color-destructive: var(--color-destructive-light);
+  --color-destructive-foreground: var(--color-destructive-foreground-light);
+  --color-border: var(--color-border-light);
+  --color-input: var(--color-input-light);
+  --color-ring: var(--color-ring-light);
+}
+
+/* Dark Theme Variables - A tasteful, high-contrast dark mode */
+html.dark {
+  --color-background: #0d1117;          /* GitHub Dark Background */
+  --color-foreground: #c9d1d9;          /* GitHub Dark Text */
+  --color-card: #161b22;              /* GitHub Dark Card/Container */
+  --color-card-foreground: #c9d1d9;
+  --color-popover: #161b22;
+  --color-popover-foreground: #c9d1d9;
+  --color-primary: #58a6ff;             /* GitHub Dark Blue for accents */
+  --color-primary-hover: #388bfd;
+  --color-primary-foreground: #0d1117;
+  --color-secondary: #21262d;           /* GitHub Dark Secondary container */
+  --color-secondary-foreground: #c9d1d9;
+  --color-muted: #161b22;              /* Muted containers like textareas should match card */
+  --color-muted-foreground: #8b949e;      /* Muted text */
+  --color-accent: #3fb950;              /* GitHub Dark Green */
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #f85149;          /* GitHub Dark Red */
+  --color-destructive-foreground: #ffffff;
+  --color-border: #30363d;              /* GitHub Dark Borders */
+  --color-input: #30363d;              /* Border for inputs */
+  --color-ring: #58a6ff;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga' 1, 'calt' 1; 
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-card);
+  border-radius: var(--radius);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-muted-foreground);
+  border-radius: var(--radius);
+  border: 3px solid var(--color-card);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Selection highlight */
+::selection {
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+/* Details summary marker rotation for Saved Evaluations */
+details summary::-webkit-details-marker {
+  display: none; 
+}
+details > summary .details-summary-marker {
+  transition: transform 0.2s ease-in-out;
+}
+details[open] > summary .details-summary-marker {
+  transform: rotate(90deg);
+}
+
+/* Slider track styling (no more gradient) */
+.slider-colored {
+  --track-height: 0.5rem;
+  --thumb-size: 1.25rem;
+}
+
+.slider-colored::-webkit-slider-runnable-track {
+  width: 100%;
+  height: var(--track-height);
+  cursor: pointer;
+  background: var(--color-muted);
+  border-radius: 9999px;
+}
+
+.slider-colored::-moz-range-track {
+  width: 100%;
+  height: var(--track-height);
+  cursor: pointer;
+  background: var(--color-muted);
+  border-radius: 9999px;
+}

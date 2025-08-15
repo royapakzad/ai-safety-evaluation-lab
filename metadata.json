@@ -1,0 +1,6 @@
+{
+  "requestFramePermissions": [],
+  "name": "07292025_LLM Reasoning & Multilingual Safety Lab_Current",
+  "description": "An application to evaluate and compare Large Language Models (LLMs) on both multilingual consistency and the impact of internal reasoning on safety and accuracy.",
+  "prompt": ""
+}

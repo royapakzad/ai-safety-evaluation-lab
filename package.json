@@ -1,0 +1,37 @@
+{
+  "name": "llm-safety-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An application to evaluate and compare Large Language Models (LLMs) on multilingual consistency and reasoning‑safety.",
+  "scripts": {
+    "dev": "node create-env.js && vite",
+    "prebuild": "node create-env.js",
+    "build": "tailwindcss -i ./src/input.css -o ./output.css && vite build",
+    "generate-env": "node create-env.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@google/genai": "^1.11.0",
+    "@mistralai/mistralai": "^1.7.5",
+    "dompurify": "^3.2.6",
+    "marked": "^16.1.1",
+    "openai": "^5.10.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.13",
+    "@types/dompurify": "^3.2.0",
+    "@types/marked": "^6.0.0",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.21",
+    "esbuild": "^0.25.8",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6"
+  }
+}
