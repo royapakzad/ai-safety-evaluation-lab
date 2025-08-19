@@ -175,44 +175,41 @@ export const deleteEvaluation = async (evaluationId: string): Promise<void> => {
 };
 
 /**
- * RAW DATABASE EXPORT - NO FILTERING, NO LOGIC, NO DECISIONS
- * Gets exactly what's in Firebase - nothing more, nothing less
+ * Get ALL evaluations for CSV export - no filtering, just raw data
  */
-export const getAllEvaluationsForExport = async (user: User): Promise<any[]> => {
+export const getAllEvaluationsForExport = async (user: User): Promise<EvaluationRecord[]> => {
   try {
-    console.log('🔥 RAW EXPORT: Starting completely unfiltered database dump');
-    console.log('🔥 RAW EXPORT: User role:', user.role, 'Email:', user.email);
+    console.log('🔥 EXPORT: Getting evaluations for user:', user.email, 'role:', user.role);
     
     const evaluationsRef = collection(db, 'evaluations');
     
     let querySnapshot;
     if (user.role === 'admin') {
-      console.log('🔥 RAW EXPORT: Admin - getting EVERYTHING from database');
-      // Admin gets EVERYTHING - no query conditions at all
+      console.log('🔥 EXPORT: Admin - fetching ALL documents');
+      // Admin: get ALL documents, no conditions, no ordering
       querySnapshot = await getDocs(evaluationsRef);
     } else {
-      console.log('🔥 RAW EXPORT: User - getting their records only');
-      // User gets only their records - minimal query
+      console.log('🔥 EXPORT: Regular user - fetching user documents only');
+      // Regular user: only their documents, no ordering
       const userQuery = query(evaluationsRef, where('userEmail', '==', user.email));
       querySnapshot = await getDocs(userQuery);
     }
     
-    console.log('🔥 RAW EXPORT: Firebase returned', querySnapshot.size, 'total documents');
+    console.log('🔥 EXPORT: Firebase query returned', querySnapshot.size, 'documents');
     
-    const rawData: any[] = [];
+    const evaluations: EvaluationRecord[] = [];
     
     querySnapshot.forEach((doc) => {
-      // Get raw document data with ID - no processing, no type casting, no filtering
-      const rawDocument = { ...doc.data(), firebaseId: doc.id };
-      console.log('🔥 RAW EXPORT: Adding document:', doc.id);
-      rawData.push(rawDocument);
+      const docData = { ...doc.data(), id: doc.id } as EvaluationRecord;
+      console.log('🔥 EXPORT: Processing doc:', doc.id, 'userEmail:', docData.userEmail);
+      evaluations.push(docData);
     });
     
-    console.log('🔥 RAW EXPORT: Returning', rawData.length, 'raw documents - NO FILTERING APPLIED');
-    return rawData;
+    console.log('🔥 EXPORT: Returning', evaluations.length, 'evaluations total');
+    return evaluations;
     
   } catch (error) {
-    console.error('❌ RAW EXPORT: Failed to get raw data:', error);
-    throw error; // Don't wrap the error - let it bubble up raw
+    console.error('❌ EXPORT: Error:', error);
+    throw new Error(`Failed to fetch evaluations for export: ${(error as any).message || error}`);
   }
 };
