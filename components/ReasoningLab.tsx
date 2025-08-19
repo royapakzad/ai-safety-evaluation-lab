@@ -655,8 +655,15 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
     let dataToExport;
     
     try {
+      // CRITICAL DEBUG: Log before the database call
+      console.log('🚨 DOWNLOAD DEBUG: About to call getAllEvaluationsForExport for user:', currentUser);
+      
       // Use dedicated export function that bypasses all filtering
       dataToExport = await db.getAllEvaluationsForExport(currentUser);
+      
+      // CRITICAL DEBUG: Log what we got back
+      console.log('🚨 DOWNLOAD DEBUG: Raw data received:', dataToExport.length, 'evaluations');
+      console.log('🚨 DOWNLOAD DEBUG: First few evaluations:', dataToExport.slice(0, 3));
       
       if (dataToExport.length === 0) {
         const message = currentUser.role === 'admin' 
@@ -665,14 +672,13 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
         return alert(message);
       }
       
-      const labTypes = [...new Set(dataToExport.map(ev => ev.labType))];
       const userScope = currentUser.role === 'admin' ? 'all users' : 'your own';
-      console.log(`${currentUser.role === 'admin' ? 'Admin' : 'Evaluator'} downloading ${dataToExport.length} evaluations from ${userScope}`);
-      console.log(`Lab types included:`, labTypes);
+      console.log(`🚨 FINAL: ${currentUser.role === 'admin' ? 'Admin' : 'Evaluator'} downloading ${dataToExport.length} evaluations from ${userScope}`);
+      console.log(`🚨 FINAL: This should include ALL submitted evaluations in the database!`);
       
     } catch (error) {
-      console.error('Error fetching evaluations for export:', error);
-      return alert("Failed to fetch evaluations for export. Please try again.");
+      console.error('🚨 ERROR in downloadCSV:', error);
+      return alert(`Failed to fetch evaluations for export: ${error.message}`);
     }
     const flattenObject = (obj: any, prefix = ''): any => {
         if (!obj) return { [prefix]: '' };
