@@ -654,39 +654,25 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
   const downloadCSV = async () => {
     let dataToExport;
     
-    if (currentUser.role === 'admin') {
-      // Admin: fetch ALL evaluations directly from database to ensure complete data
-      try {
-        const allEvaluationsForAdmin = await db.getEvaluations({
-          ...currentUser,
-          role: 'admin' // Ensure admin role is passed explicitly
-        } as User);
-        dataToExport = allEvaluationsForAdmin; // No filtering - get ALL lab types
-        
-        if (dataToExport.length === 0) {
-          return alert("No evaluations found in the database.");
-        }
-        
-        console.log(`Admin downloading ${dataToExport.length} total evaluations from all users (all lab types)`);
-      } catch (error) {
-        console.error('Error fetching all evaluations for admin:', error);
-        return alert("Failed to fetch evaluations for export. Please try again.");
+    try {
+      // Use dedicated export function that bypasses all filtering
+      dataToExport = await db.getAllEvaluationsForExport(currentUser);
+      
+      if (dataToExport.length === 0) {
+        const message = currentUser.role === 'admin' 
+          ? "No evaluations found in the database." 
+          : "No evaluations found for your account.";
+        return alert(message);
       }
-    } else {
-      // Regular evaluator: fetch ALL their evaluations (all lab types) directly from database
-      try {
-        const allUserEvaluations = await db.getEvaluations(currentUser);
-        dataToExport = allUserEvaluations; // No filtering - get ALL their lab types
-        
-        if (dataToExport.length === 0) {
-          return alert("No evaluations found for your account.");
-        }
-        
-        console.log(`Evaluator downloading ${dataToExport.length} of their own evaluations (all lab types)`);
-      } catch (error) {
-        console.error('Error fetching evaluations for user:', error);
-        return alert("Failed to fetch your evaluations for export. Please try again.");
-      }
+      
+      const labTypes = [...new Set(dataToExport.map(ev => ev.labType))];
+      const userScope = currentUser.role === 'admin' ? 'all users' : 'your own';
+      console.log(`${currentUser.role === 'admin' ? 'Admin' : 'Evaluator'} downloading ${dataToExport.length} evaluations from ${userScope}`);
+      console.log(`Lab types included:`, labTypes);
+      
+    } catch (error) {
+      console.error('Error fetching evaluations for export:', error);
+      return alert("Failed to fetch evaluations for export. Please try again.");
     }
     const flattenObject = (obj: any, prefix = ''): any => {
         if (!obj) return { [prefix]: '' };
