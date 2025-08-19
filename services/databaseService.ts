@@ -190,14 +190,15 @@ export const getAllEvaluationsForExport = async (user: User): Promise<Evaluation
     let q;
     
     if (user.role === 'admin') {
-      console.log('🔥 Admin export - fetching ALL evaluations from ALL users, ALL lab types');
-      q = query(evaluationsRef, orderBy('timestamp', 'desc'));
+      console.log('🔥 Admin export - fetching ALL evaluations from ALL users, ALL lab types (NO orderBy)');
+      // Remove orderBy to avoid missing records that might not have timestamp
+      q = query(evaluationsRef);
     } else {
-      console.log('🔥 Regular user export - fetching ALL evaluations for email (all lab types):', user.email);
+      console.log('🔥 Regular user export - fetching ALL evaluations for email (all lab types, NO orderBy):', user.email);
+      // Remove orderBy to avoid missing records that might not have timestamp
       q = query(
         evaluationsRef, 
-        where('userEmail', '==', user.email),
-        orderBy('timestamp', 'desc')
+        where('userEmail', '==', user.email)
       );
     }
     
