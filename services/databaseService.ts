@@ -173,7 +173,3 @@ export const deleteEvaluation = async (evaluationId: string): Promise<void> => {
     throw new Error('Failed to delete evaluation');
   }
 };
-
-/**
- * Get ALL evaluations for CSV export - no filtering, just raw data
- */
