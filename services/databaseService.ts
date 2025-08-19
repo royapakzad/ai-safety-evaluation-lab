@@ -175,51 +175,44 @@ export const deleteEvaluation = async (evaluationId: string): Promise<void> => {
 };
 
 /**
- * Fetches ALL evaluations from Firestore for CSV export purposes.
- * This bypasses role-based filtering and gets everything for admin downloads,
- * or user-specific evaluations for regular users.
- * @param user The current user. Admins get all evaluations, evaluators get their own.
- * @returns A promise that resolves to an array of ALL EvaluationRecords (no labType filtering).
+ * RAW DATABASE EXPORT - NO FILTERING, NO LOGIC, NO DECISIONS
+ * Gets exactly what's in Firebase - nothing more, nothing less
  */
-export const getAllEvaluationsForExport = async (user: User): Promise<EvaluationRecord[]> => {
+export const getAllEvaluationsForExport = async (user: User): Promise<any[]> => {
   try {
-    console.log('🔥 === STARTING CSV EXPORT EVALUATION FETCH ===');
-    console.log('🔥 Fetching ALL evaluations for CSV export for user:', user);
+    console.log('🔥 RAW EXPORT: Starting completely unfiltered database dump');
+    console.log('🔥 RAW EXPORT: User role:', user.role, 'Email:', user.email);
     
     const evaluationsRef = collection(db, 'evaluations');
-    let q;
     
+    let querySnapshot;
     if (user.role === 'admin') {
-      console.log('🔥 Admin export - fetching ALL evaluations from ALL users, ALL lab types (NO orderBy)');
-      // Remove orderBy to avoid missing records that might not have timestamp
-      q = query(evaluationsRef);
+      console.log('🔥 RAW EXPORT: Admin - getting EVERYTHING from database');
+      // Admin gets EVERYTHING - no query conditions at all
+      querySnapshot = await getDocs(evaluationsRef);
     } else {
-      console.log('🔥 Regular user export - fetching ALL evaluations for email (all lab types, NO orderBy):', user.email);
-      // Remove orderBy to avoid missing records that might not have timestamp
-      q = query(
-        evaluationsRef, 
-        where('userEmail', '==', user.email)
-      );
+      console.log('🔥 RAW EXPORT: User - getting their records only');
+      // User gets only their records - minimal query
+      const userQuery = query(evaluationsRef, where('userEmail', '==', user.email));
+      querySnapshot = await getDocs(userQuery);
     }
     
-    const querySnapshot = await getDocs(q);
-    console.log('🔥 Export query completed, total documents found:', querySnapshot.size);
+    console.log('🔥 RAW EXPORT: Firebase returned', querySnapshot.size, 'total documents');
     
-    const evaluations: EvaluationRecord[] = [];
+    const rawData: any[] = [];
     
     querySnapshot.forEach((doc) => {
-      const data = { ...doc.data(), id: doc.id } as EvaluationRecord;
-      console.log('🔥 Export processing document:', doc.id, 'labType:', data.labType);
-      evaluations.push(data);
+      // Get raw document data with ID - no processing, no type casting, no filtering
+      const rawDocument = { ...doc.data(), firebaseId: doc.id };
+      console.log('🔥 RAW EXPORT: Adding document:', doc.id);
+      rawData.push(rawDocument);
     });
     
-    console.log('🔥 Final export evaluations array length:', evaluations.length);
-    console.log('🔥 Lab types in export:', [...new Set(evaluations.map(ev => ev.labType))]);
-    console.log('🔥 === CSV EXPORT EVALUATION FETCH COMPLETE ===');
-    return evaluations;
+    console.log('🔥 RAW EXPORT: Returning', rawData.length, 'raw documents - NO FILTERING APPLIED');
+    return rawData;
+    
   } catch (error) {
-    console.error('❌ === CSV EXPORT EVALUATION FETCH FAILED ===');
-    console.error('❌ Detailed error fetching evaluations for export:', error);
-    throw new Error(`Failed to fetch evaluations for export: ${(error as any).message || error}`);
+    console.error('❌ RAW EXPORT: Failed to get raw data:', error);
+    throw error; // Don't wrap the error - let it bubble up raw
   }
 };
