@@ -651,10 +651,43 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
     }
   }, [selectedCsvScenarioId, csvScenarios, inputMode]);
   
-  const downloadCSV = () => {
-    if (visibleEvaluations.length === 0) return alert("No data to export.");
+  const downloadCSV = async () => {
+    let dataToExport;
     
-    const dataToExport = visibleEvaluations;
+    if (currentUser.role === 'admin') {
+      // Admin: fetch ALL evaluations directly from database to ensure complete data
+      try {
+        const allEvaluationsForAdmin = await db.getEvaluations({
+          ...currentUser,
+          role: 'admin' // Ensure admin role is passed explicitly
+        } as User);
+        dataToExport = allEvaluationsForAdmin; // No filtering - get ALL lab types
+        
+        if (dataToExport.length === 0) {
+          return alert("No evaluations found in the database.");
+        }
+        
+        console.log(`Admin downloading ${dataToExport.length} total evaluations from all users (all lab types)`);
+      } catch (error) {
+        console.error('Error fetching all evaluations for admin:', error);
+        return alert("Failed to fetch evaluations for export. Please try again.");
+      }
+    } else {
+      // Regular evaluator: fetch ALL their evaluations (all lab types) directly from database
+      try {
+        const allUserEvaluations = await db.getEvaluations(currentUser);
+        dataToExport = allUserEvaluations; // No filtering - get ALL their lab types
+        
+        if (dataToExport.length === 0) {
+          return alert("No evaluations found for your account.");
+        }
+        
+        console.log(`Evaluator downloading ${dataToExport.length} of their own evaluations (all lab types)`);
+      } catch (error) {
+        console.error('Error fetching evaluations for user:', error);
+        return alert("Failed to fetch your evaluations for export. Please try again.");
+      }
+    }
     const flattenObject = (obj: any, prefix = ''): any => {
         if (!obj) return { [prefix]: '' };
         return Object.keys(obj).reduce((acc, k) => {
@@ -809,7 +842,7 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
                     <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>List</button>
                     <button onClick={() => setViewMode('dashboard')} className={`px-3 py-1.5 rounded-md transition-colors ${viewMode === 'dashboard' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>Dashboard</button>
                  </div>
-                 {visibleEvaluations.length > 0 && <button onClick={downloadCSV} className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 text-sm flex items-center justify-center" aria-label="Download evaluations as CSV"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>Download Full Report</button>}
+                 {(currentUser.role === 'admin' || visibleEvaluations.length > 0) && <button onClick={downloadCSV} className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 text-sm flex items-center justify-center" aria-label="Download evaluations as CSV"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>{currentUser.role === 'admin' ? 'Download All Evaluations' : 'Download My Evaluations'}</button>}
              </div>
           </div>
           {isLoadingEvaluations ? (
