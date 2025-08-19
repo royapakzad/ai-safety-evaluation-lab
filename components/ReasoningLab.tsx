@@ -652,69 +652,57 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
   }, [selectedCsvScenarioId, csvScenarios, inputMode]);
   
   const downloadCSV = async () => {
-    console.log('🚨 DOWNLOAD: Starting RAW CSV export for user:', currentUser.email, 'role:', currentUser.role);
+    console.log('🚨 DOWNLOAD: Starting CSV export for user:', currentUser.email, 'role:', currentUser.role);
     
-    let rawData;
+    let dataToExport;
     try {
-      // Get raw data from database - NO FILTERING
-      rawData = await db.getAllEvaluationsForExport(currentUser);
-      console.log('🚨 DOWNLOAD: Got', rawData.length, 'raw documents from Firebase');
+      // Get ALL evaluations using simplified query
+      dataToExport = await db.getAllEvaluationsForExport(currentUser);
+      console.log('🚨 DOWNLOAD: Retrieved', dataToExport.length, 'evaluations from database');
       
-      if (rawData.length === 0) {
-        console.log('🚨 DOWNLOAD: No data found');
-        return alert("No data found in database.");
+      if (dataToExport.length === 0) {
+        const message = currentUser.role === 'admin' 
+          ? "No evaluations found in database." 
+          : "No evaluations found for your account.";
+        return alert(message);
       }
       
     } catch (error) {
       console.error('🚨 DOWNLOAD ERROR:', error);
-      return alert(`Database error: ${error}`);
+      return alert(`Failed to fetch evaluations: ${error}`);
+    }
+    console.log('🚨 DOWNLOAD: Creating CSV with', dataToExport.length, 'records');
+    
+    // RESTORED ORIGINAL CSV LOGIC 
+    const flattenObject = (obj: any, prefix = ''): any => {
+        if (!obj) return { [prefix]: '' };
+        return Object.keys(obj).reduce((acc, k) => {
+            const pre = prefix ? `${prefix}_` : '';
+            if (k === 'entities') { 
+                const entities = obj[k] as VerifiableEntity[];
+                acc[`${pre}entities_working`] = entities.filter(e => e.status === 'working').map(e => e.value).join('; ');
+                acc[`${pre}entities_not_working`] = entities.filter(e => e.status === 'not_working').map(e => e.value).join('; ');
+                acc[`${pre}entities_unchecked`] = entities.filter(e => e.status === 'unchecked').map(e => e.value).join('; ');
+            } else if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
+                Object.assign(acc, flattenObject(obj[k], pre + k));
+            } else {
+                 acc[pre + k] = Array.isArray(obj[k]) ? obj[k].join('; ') : obj[k];
+            }
+            return acc;
+        }, {} as Record<string, any>);
     }
     
-    // Use rawData directly - no processing, no manipulation
-    const dataToExport = rawData;
-    // SIMPLIFIED CSV GENERATION - NO COMPLEX LOGIC
-    console.log('🚨 DOWNLOAD: Starting CSV generation for', dataToExport.length, 'records');
-    
-    // Get ALL possible column names from ALL records
-    const allHeaders = new Set<string>();
-    dataToExport.forEach(record => {
-        if (record && typeof record === 'object') {
-            // Add all top-level keys
-            Object.keys(record).forEach(key => allHeaders.add(key));
-            
-            // Add nested object keys with prefixes (simplified)
-            Object.keys(record).forEach(key => {
-                if (record[key] && typeof record[key] === 'object' && !Array.isArray(record[key])) {
-                    Object.keys(record[key]).forEach(nestedKey => {
-                        allHeaders.add(`${key}_${nestedKey}`);
-                    });
-                }
-            });
-        }
+    const flattenedData = dataToExport.map(row => {
+        const { humanScores, llmScores, ...rest } = row;
+        const flatHumanScores = humanScores ? { ...flattenObject(humanScores.english, 'humanScores_A'), ...flattenObject(humanScores.native, 'humanScores_B'), ...flattenObject(humanScores.disparity, 'humanScores_disparity') } : {};
+        const flatLlmScores = llmScores ? { ...flattenObject(llmScores.english, 'llmScores_A'), ...flattenObject(llmScores.native, 'llmScores_B'), ...flattenObject(llmScores.disparity, 'llmScores_disparity') } : {};
+
+        return { ...rest, ...flatHumanScores, ...flatLlmScores };
     });
-    
+
+    const allHeaders = new Set<string>(['id', 'timestamp', 'userEmail', 'labType', 'scenarioId', 'scenarioCategory', 'scenarioContext', 'languagePair', 'model', 'titleA', 'promptA', 'reasoningRequestedA', 'reasoningWordCountA', 'answerWordCountA', 'generationTimeSecondsA', 'wordsPerSecondA', 'titleB', 'promptB', 'reasoningRequestedB', 'reasoningWordCountB', 'answerWordCountB', 'generationTimeSecondsB', 'wordsPerSecondB', 'notes', 'isFlaggedForReview', 'rawResponseA', 'reasoningA', 'responseA', 'rawResponseB', 'reasoningB', 'responseB', 'llmEvaluationStatus', 'llmEvaluationError']);
+    flattenedData.forEach(row => Object.keys(row).forEach(header => allHeaders.add(header)));
     const headers = Array.from(allHeaders);
-    console.log('🚨 DOWNLOAD: Found', headers.length, 'unique columns');
-    
-    // Simple flattening - no complex logic, just basic key_subkey
-    const flattenedData = dataToExport.map(record => {
-        const flattened: any = {};
-        
-        Object.keys(record || {}).forEach(key => {
-            const value = record[key];
-            if (value && typeof value === 'object' && !Array.isArray(value)) {
-                // Flatten nested objects with key_subkey
-                Object.keys(value).forEach(subKey => {
-                    flattened[`${key}_${subKey}`] = value[subKey];
-                });
-            } else {
-                // Keep simple values as-is
-                flattened[key] = value;
-            }
-        });
-        
-        return flattened;
-    });
     
     let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + flattenedData.map(row => headers.map(header => `"${String((row as any)[header] ?? '').replace(/"/g, '""')}"`).join(",")).join("\n");
     
