@@ -651,29 +651,10 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
     }
   }, [selectedCsvScenarioId, csvScenarios, inputMode]);
   
-  const downloadCSV = async () => {
-    console.log('🚨 DOWNLOAD: Starting CSV export for user:', currentUser.email, 'role:', currentUser.role);
+  const downloadCSV = () => {
+    if (visibleEvaluations.length === 0) return alert("No data to export.");
     
-    let dataToExport;
-    try {
-      // Get ALL evaluations using simplified query
-      dataToExport = await db.getAllEvaluationsForExport(currentUser);
-      console.log('🚨 DOWNLOAD: Retrieved', dataToExport.length, 'evaluations from database');
-      
-      if (dataToExport.length === 0) {
-        const message = currentUser.role === 'admin' 
-          ? "No evaluations found in database." 
-          : "No evaluations found for your account.";
-        return alert(message);
-      }
-      
-    } catch (error) {
-      console.error('🚨 DOWNLOAD ERROR:', error);
-      return alert(`Failed to fetch evaluations: ${error}`);
-    }
-    console.log('🚨 DOWNLOAD: Creating CSV with', dataToExport.length, 'records');
-    
-    // RESTORED ORIGINAL CSV LOGIC 
+    const dataToExport = visibleEvaluations;
     const flattenObject = (obj: any, prefix = ''): any => {
         if (!obj) return { [prefix]: '' };
         return Object.keys(obj).reduce((acc, k) => {
@@ -828,18 +809,7 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
                     <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>List</button>
                     <button onClick={() => setViewMode('dashboard')} className={`px-3 py-1.5 rounded-md transition-colors ${viewMode === 'dashboard' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>Dashboard</button>
                  </div>
-                 {(currentUser.role === 'admin' || visibleEvaluations.length > 0) && (
-                   <div className="flex gap-2">
-                     <button onClick={downloadCSV} className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 text-sm flex items-center justify-center" aria-label="Download evaluations as CSV">
-                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>
-                       CSV
-                     </button>
-                     <button onClick={downloadJSON} className="bg-secondary text-secondary-foreground font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 text-sm flex items-center justify-center" aria-label="Download evaluations as JSON">
-                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>
-                       JSON
-                     </button>
-                   </div>
-                 )}
+                 {visibleEvaluations.length > 0 && <button onClick={downloadCSV} className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 text-sm flex items-center justify-center" aria-label="Download evaluations as CSV"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>Download Full Report</button>}
              </div>
           </div>
           {isLoadingEvaluations ? (
