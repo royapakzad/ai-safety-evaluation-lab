@@ -179,37 +179,45 @@ export const deleteEvaluation = async (evaluationId: string): Promise<void> => {
  */
 export const getAllEvaluationsForExport = async (user: User): Promise<EvaluationRecord[]> => {
   try {
-    console.log('🔥 EXPORT: Getting evaluations for user:', user.email, 'role:', user.role);
+    console.log('🔥 EXPORT DEBUG: Starting export for user:', user.email);
+    console.log('🔥 EXPORT DEBUG: User role exactly is:', user.role);
+    console.log('🔥 EXPORT DEBUG: User object:', JSON.stringify(user, null, 2));
     
     const evaluationsRef = collection(db, 'evaluations');
+    console.log('🔥 EXPORT DEBUG: Collection reference created');
     
     let querySnapshot;
     if (user.role === 'admin') {
-      console.log('🔥 EXPORT: Admin - fetching ALL documents');
-      // Admin: get ALL documents, no conditions, no ordering
+      console.log('🔥 EXPORT DEBUG: User is admin - getting ALL documents');
       querySnapshot = await getDocs(evaluationsRef);
+      console.log('🔥 EXPORT DEBUG: Admin query completed, got', querySnapshot.size, 'total documents');
     } else {
-      console.log('🔥 EXPORT: Regular user - fetching user documents only');
-      // Regular user: only their documents, no ordering
+      console.log('🔥 EXPORT DEBUG: User is NOT admin - getting user documents only');
+      console.log('🔥 EXPORT DEBUG: Filtering by userEmail exactly:', user.email);
       const userQuery = query(evaluationsRef, where('userEmail', '==', user.email));
       querySnapshot = await getDocs(userQuery);
+      console.log('🔥 EXPORT DEBUG: User query completed, got', querySnapshot.size, 'documents for', user.email);
     }
     
-    console.log('🔥 EXPORT: Firebase query returned', querySnapshot.size, 'documents');
-    
     const evaluations: EvaluationRecord[] = [];
+    let docCount = 0;
     
     querySnapshot.forEach((doc) => {
+      docCount++;
       const docData = { ...doc.data(), id: doc.id } as EvaluationRecord;
-      console.log('🔥 EXPORT: Processing doc:', doc.id, 'userEmail:', docData.userEmail);
+      console.log(`🔥 EXPORT DEBUG: Doc ${docCount}:`, doc.id, 'userEmail:', docData.userEmail, 'labType:', docData.labType, 'timestamp:', docData.timestamp);
       evaluations.push(docData);
     });
     
-    console.log('🔥 EXPORT: Returning', evaluations.length, 'evaluations total');
+    console.log('🔥 EXPORT DEBUG: FINAL RESULT - Returning', evaluations.length, 'evaluations');
+    console.log('🔥 EXPORT DEBUG: All userEmails in results:', [...new Set(evaluations.map(e => e.userEmail))]);
+    
     return evaluations;
     
   } catch (error) {
-    console.error('❌ EXPORT: Error:', error);
+    console.error('❌ EXPORT DEBUG: Error occurred:', error);
+    console.error('❌ EXPORT DEBUG: Error type:', typeof error);
+    console.error('❌ EXPORT DEBUG: Error message:', (error as any).message);
     throw new Error(`Failed to fetch evaluations for export: ${(error as any).message || error}`);
   }
 };
