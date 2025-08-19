@@ -173,3 +173,52 @@ export const deleteEvaluation = async (evaluationId: string): Promise<void> => {
     throw new Error('Failed to delete evaluation');
   }
 };
+
+/**
+ * Fetches ALL evaluations from Firestore for CSV export purposes.
+ * This bypasses role-based filtering and gets everything for admin downloads,
+ * or user-specific evaluations for regular users.
+ * @param user The current user. Admins get all evaluations, evaluators get their own.
+ * @returns A promise that resolves to an array of ALL EvaluationRecords (no labType filtering).
+ */
+export const getAllEvaluationsForExport = async (user: User): Promise<EvaluationRecord[]> => {
+  try {
+    console.log('🔥 === STARTING CSV EXPORT EVALUATION FETCH ===');
+    console.log('🔥 Fetching ALL evaluations for CSV export for user:', user);
+    
+    const evaluationsRef = collection(db, 'evaluations');
+    let q;
+    
+    if (user.role === 'admin') {
+      console.log('🔥 Admin export - fetching ALL evaluations from ALL users, ALL lab types');
+      q = query(evaluationsRef, orderBy('timestamp', 'desc'));
+    } else {
+      console.log('🔥 Regular user export - fetching ALL evaluations for email (all lab types):', user.email);
+      q = query(
+        evaluationsRef, 
+        where('userEmail', '==', user.email),
+        orderBy('timestamp', 'desc')
+      );
+    }
+    
+    const querySnapshot = await getDocs(q);
+    console.log('🔥 Export query completed, total documents found:', querySnapshot.size);
+    
+    const evaluations: EvaluationRecord[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = { ...doc.data(), id: doc.id } as EvaluationRecord;
+      console.log('🔥 Export processing document:', doc.id, 'labType:', data.labType);
+      evaluations.push(data);
+    });
+    
+    console.log('🔥 Final export evaluations array length:', evaluations.length);
+    console.log('🔥 Lab types in export:', [...new Set(evaluations.map(ev => ev.labType))]);
+    console.log('🔥 === CSV EXPORT EVALUATION FETCH COMPLETE ===');
+    return evaluations;
+  } catch (error) {
+    console.error('❌ === CSV EXPORT EVALUATION FETCH FAILED ===');
+    console.error('❌ Detailed error fetching evaluations for export:', error);
+    throw new Error(`Failed to fetch evaluations for export: ${(error as any).message || error}`);
+  }
+};
