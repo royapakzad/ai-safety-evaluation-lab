@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
-import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS } from '../constants';
+import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
 
 // --- HELPER COMPONENTS ---
 
@@ -229,18 +229,28 @@ interface ReasoningDashboardProps {
 const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) => {
     const [drilldownData, setDrilldownData] = useState<{ title: string; evaluations: ReasoningEvaluationRecord[] } | null>(null);
     const [selectedLanguagePair, setSelectedLanguagePair] = useState<string>('All');
+    const [selectedModel, setSelectedModel] = useState<string>('All');
 
     const languagePairs = useMemo(() => {
         const pairs = new Set(evaluations.map(e => e.languagePair).filter(Boolean));
         return ['All', ...Array.from(pairs)];
     }, [evaluations]);
+    
+    const models = useMemo(() => {
+        const modelIds = new Set(evaluations.map(e => e.model).filter(Boolean));
+        return ['All', ...Array.from(modelIds)];
+    }, [evaluations]);
 
     const filteredEvaluations = useMemo(() => {
-        if (selectedLanguagePair === 'All') {
-            return evaluations;
+        let filtered = evaluations;
+        if (selectedLanguagePair !== 'All') {
+            filtered = filtered.filter(e => e.languagePair === selectedLanguagePair);
         }
-        return evaluations.filter(e => e.languagePair === selectedLanguagePair);
-    }, [evaluations, selectedLanguagePair]);
+        if (selectedModel !== 'All') {
+            filtered = filtered.filter(e => e.model === selectedModel);
+        }
+        return filtered;
+    }, [evaluations, selectedLanguagePair, selectedModel]);
 
     
     const getNumericScore = (key: keyof (LanguageSpecificRubricScores | LlmRubricScores), score: (LanguageSpecificRubricScores | LlmRubricScores)) => {
@@ -415,24 +425,44 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             {drilldownData && <DrilldownModal data={drilldownData} onClose={() => setDrilldownData(null)} />}
             
             <DashboardCard title="Dashboard Filters">
-                <div className="flex items-center gap-4">
-                    <label htmlFor="lang-pair-filter" className="text-sm font-medium whitespace-nowrap">Language Pair:</label>
-                    <select
-                        id="lang-pair-filter"
-                        value={selectedLanguagePair}
-                        onChange={e => setSelectedLanguagePair(e.target.value)}
-                        className="form-select w-full p-2 border rounded-md shadow-sm bg-background border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                    >
-                        {languagePairs.map(pair => (
-                            <option key={pair} value={pair}>{pair}</option>
-                        ))}
-                    </select>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex items-center gap-4">
+                        <label htmlFor="lang-pair-filter" className="text-sm font-medium whitespace-nowrap">Language Pair:</label>
+                        <select
+                            id="lang-pair-filter"
+                            value={selectedLanguagePair}
+                            onChange={e => setSelectedLanguagePair(e.target.value)}
+                            className="form-select w-full p-2 border rounded-md shadow-sm bg-background border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                        >
+                            {languagePairs.map(pair => (
+                                <option key={pair} value={pair}>{pair}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <label htmlFor="model-filter" className="text-sm font-medium whitespace-nowrap">LLM Model:</label>
+                        <select
+                            id="model-filter"
+                            value={selectedModel}
+                            onChange={e => setSelectedModel(e.target.value)}
+                            className="form-select w-full p-2 border rounded-md shadow-sm bg-background border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                        >
+                            {models.map(modelId => {
+                                const modelDef = AVAILABLE_MODELS.find(m => m.id === modelId);
+                                return (
+                                    <option key={modelId} value={modelId}>
+                                        {modelId === 'All' ? 'All Models' : modelDef?.name || modelId}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                    </div>
                 </div>
             </DashboardCard>
 
             {!metrics || !radarChartData || !disparityChartData ? (
                  <div className="text-center py-10 bg-card border border-border rounded-xl shadow-sm">
-                    <p className="text-lg text-muted-foreground">No evaluations found for "{selectedLanguagePair}".</p>
+                    <p className="text-lg text-muted-foreground">No evaluations found for the selected filters.</p>
                 </div>
             ) : (
                 <>
