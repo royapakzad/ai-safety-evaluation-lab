@@ -209,24 +209,35 @@ const StackedBarChart: React.FC<{
     </div>
 );
 
-const HeatmapCell: React.FC<{ label: string; fullLabel: string; value: number; maxValue: number }> = ({ label, fullLabel, value, maxValue }) => {
-    // Normalize value from 0 to 1
+const MultiLanguageHeatmapCell: React.FC<{
+    language: string;
+    dimensionLabel: string;
+    value: number;
+    count: number;
+    maxValue: number;
+}> = ({ language, dimensionLabel, value, count, maxValue }) => {
+    // Normalize value from 0 to 1 for color calculation
     const intensity = maxValue > 0 ? value / maxValue : 0;
-    // Use HSL for better color control: Orange color (hue=30), saturate and lighten based on intensity
-    const backgroundColor = `hsl(25, 95%, ${95 - (intensity * 45)}%)`; // Lightness from 95% (very light orange) to 50% (orange)
-    const textColor = intensity > 0.6 ? 'var(--color-primary-foreground)' : 'var(--color-foreground)';
+    // Interpolate hue from yellow (60) to red (0) for a bolder gradient
+    const hue = 60 - (intensity * 60);
+    // Use high saturation and vary lightness for impact
+    const saturation = 95;
+    const lightness = 80 - (intensity * 40); // from 80% (light yellow) down to 40% (dark red)
+    const backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    // Use light text on darker backgrounds for readability
+    const textColor = lightness < 60 ? 'var(--color-primary-foreground)' : 'var(--color-foreground)';
 
     return (
-        <div 
-            className="p-4 rounded-lg flex flex-col justify-center items-center text-center border border-border/50 transition-transform duration-200 hover:scale-105"
+        <div
+            className="p-2 rounded-md flex justify-center items-center text-center border border-transparent transition-transform duration-200 hover:scale-110 hover:z-10 hover:shadow-lg hover:border-ring"
             style={{ backgroundColor, color: textColor }}
-            title={`${fullLabel} - Average Disparity: ${value.toFixed(2)}`}
+            title={`${language} - ${dimensionLabel}\nAvg Disparity: ${value.toFixed(2)}\nBased on ${count} evaluations`}
         >
-            <div className="font-bold text-2xl">{value.toFixed(2)}</div>
-            <div className="text-xs font-medium uppercase tracking-wider mt-1">{label}</div>
+            <span className="font-bold text-base">{value.toFixed(2)}</span>
         </div>
     );
 };
+
 
 const DrilldownModal: React.FC<{ data: { title: string; evaluations: ReasoningEvaluationRecord[] }; onClose: () => void }> = ({ data, onClose }) => {
     if (!data) return null;
@@ -370,7 +381,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const heatmapData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
 
-        const dimensions = RUBRIC_DIMENSIONS.map(d => ({ key: d.key, label: d.label }));
         const shortLabels: { [key: string]: string } = {
             "actionability_practicality": "Actionability",
             "factuality": "Factuality",
@@ -379,30 +389,58 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             "non_discrimination_fairness": "Fairness",
             "freedom_of_access_censorship": "Freedom",
         };
-        
-        const disparitySums = new Map<string, number>(dimensions.map(d => [d.key, 0]));
-        let validEvals = 0;
+
+        const dimensions = RUBRIC_DIMENSIONS.map(d => ({ 
+            key: d.key, 
+            label: d.label, 
+            shortLabel: shortLabels[d.key as keyof typeof shortLabels] || d.label
+        }));
+
+        const dataByLang = new Map<string, { [key: string]: { sum: number; count: number } }>();
 
         filteredEvaluations.forEach(ev => {
-            if (ev.humanScores?.english && ev.humanScores?.native) {
-                validEvals++;
-                dimensions.forEach(dim => {
-                    const scoreA = getNumericScore(dim.key, ev.humanScores.english);
-                    const scoreB = getNumericScore(dim.key, ev.humanScores.native);
-                    const difference = Math.abs(scoreA - scoreB);
-                    disparitySums.set(dim.key, (disparitySums.get(dim.key) ?? 0) + difference);
-                });
+            if (!ev.languagePair || !ev.humanScores?.english || !ev.humanScores?.native) return;
+            
+            const langName = ev.languagePair.replace('English - ', '').trim();
+            if (!dataByLang.has(langName)) {
+                dataByLang.set(langName, {});
             }
+
+            const langData = dataByLang.get(langName)!;
+
+            dimensions.forEach(dim => {
+                if (!langData[dim.key]) {
+                    langData[dim.key] = { sum: 0, count: 0 };
+                }
+                const scoreA = getNumericScore(dim.key, ev.humanScores.english);
+                const scoreB = getNumericScore(dim.key, ev.humanScores.native);
+                const difference = Math.abs(scoreA - scoreB);
+
+                langData[dim.key].sum += difference;
+                langData[dim.key].count++;
+            });
         });
 
-        if (validEvals === 0) return null;
+        if (dataByLang.size === 0) return null;
 
-        return dimensions.map(dim => ({
-            label: dim.label,
-            shortLabel: shortLabels[dim.key] || dim.label,
-            value: (disparitySums.get(dim.key) ?? 0) / validEvals
+        const heatmapRows = Array.from(dataByLang.entries()).map(([language, langData]) => ({
+            language,
+            disparities: Object.fromEntries(
+                Object.entries(langData).map(([dimKey, { sum, count }]) => [
+                    dimKey,
+                    { value: sum / count, count }
+                ])
+            )
         }));
+        
+        heatmapRows.sort((a, b) => a.language.localeCompare(b.language));
+
+        return {
+            dimensions,
+            rows: heatmapRows,
+        };
     }, [filteredEvaluations]);
+
 
     const disparityChartData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
@@ -580,26 +618,48 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
                         </DashboardCard>
                     </div>
-
+                    
                     {heatmapData && (
-                        <DashboardCard title="Evaluation Disparity Heatmap (Human Scores)">
+                        <DashboardCard title="Multilingual Evaluation Disparity Heatmap">
                             <p className="text-xs text-muted-foreground -mt-3 mb-4">
-                                Average absolute difference in scores between English and Native Language responses. Higher values indicate greater disparity.
+                                This grid shows the average disparity between English and native language responses. The score is calculated as the absolute difference (|Score_English - Score_Native|) for each rubric dimension, where all dimensions are mapped to a 1-5 scale. Therefore, scores range from <strong>0 (no difference)</strong> to a maximum of <strong>4 (highest possible difference)</strong>. Bolder colors indicate greater disparity.
                             </p>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {heatmapData.map(item => (
-                                    <HeatmapCell 
-                                        key={item.label}
-                                        label={item.shortLabel}
-                                        fullLabel={item.label}
-                                        value={item.value}
-                                        maxValue={4} // Max possible difference is 5 - 1 = 4
-                                    />
-                                ))}
+                            <div className="overflow-x-auto custom-scrollbar pb-2">
+                                <div className="grid gap-1.5" style={{ gridTemplateColumns: `minmax(150px, 1fr) repeat(${heatmapData.dimensions.length}, minmax(100px, 1fr))` }}>
+                                    {/* Header Row */}
+                                    <div className="font-bold text-sm text-muted-foreground">Language</div>
+                                    {heatmapData.dimensions.map(dim => (
+                                        <div key={dim.key} className="font-bold text-sm text-center text-muted-foreground" title={dim.label}>
+                                            {dim.shortLabel}
+                                        </div>
+                                    ))}
+
+                                    {/* Data Rows */}
+                                    {heatmapData.rows.map(row => (
+                                        <React.Fragment key={row.language}>
+                                            <div className="font-semibold text-sm text-foreground pr-2 flex items-center">{row.language}</div>
+                                            {heatmapData.dimensions.map(dim => {
+                                                const cellData = row.disparities[dim.key];
+                                                return cellData ? (
+                                                    <MultiLanguageHeatmapCell
+                                                        key={`${row.language}-${dim.key}`}
+                                                        language={row.language}
+                                                        dimensionLabel={dim.label}
+                                                        value={cellData.value}
+                                                        count={cellData.count}
+                                                        maxValue={4}
+                                                    />
+                                                ) : (
+                                                    <div key={`${row.language}-${dim.key}`} className="bg-muted rounded-md" title="No data"></div>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
                             </div>
                             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                                 <span>Low Disparity</span>
-                                <div className="w-24 h-4 rounded-md" style={{ background: 'linear-gradient(to right, hsl(25, 95%, 95%), hsl(25, 95%, 50%))' }}></div>
+                                <div className="w-32 h-4 rounded-md" style={{ background: 'linear-gradient(to right, hsl(60, 95%, 80%), hsl(35, 95%, 60%), hsl(10, 90%, 40%))' }}></div>
                                 <span>High Disparity</span>
                             </div>
                         </DashboardCard>
