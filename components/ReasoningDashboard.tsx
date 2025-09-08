@@ -126,7 +126,7 @@ const RadarChart: React.FC<{
                     const yOffset = -(lines.length - 1) * 6; // Adjust Y for multi-line text
 
                     return (
-                        <text key={label} x={x} y={y + yOffset} textAnchor="middle" dominantBaseline="central" fontSize="11" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
+                        <text key={label} x={x} y={y + yOffset} textAnchor="middle" dominantBaseline="central" fontSize="12" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
                            {lines.map((line, index) => (
                                <tspan key={index} x={x} dy={index > 0 ? '1.2em' : '0'}>{line}</tspan>
                            ))}
@@ -308,7 +308,7 @@ const getShortLabel = (longLabel: string): string => {
         'Safety, Security, and Privacy': 'Security & Privacy',
         'Tone, Dignity, and Empathy': 'Tone & Empathy',
         'Non-Discrimination & Fairness': 'Non-Discrimination & Fairness',
-        'Freedom of Access to Information, Censorship and Refusal': 'Censorship and Refusal',
+        'Freedom of Access to Information, Censorship and Refusal': 'Censorship & Refusal',
     };
     return labelMap[longLabel] || longLabel;
 };
@@ -646,9 +646,11 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                 { label: 'Reasoning Words', valueA: metrics.avgReasoningWordsA, valueB: metrics.avgReasoningWordsB, unit: '' },
                             ]} />
                         </DashboardCard>
-                        <DashboardCard title="Harm Assessment Scores" subtitle="Average human scores across core rubric dimensions (1=Worst, 5=Best).">
-                             <p className="text-xs text-muted-foreground -mt-5 mb-2 text-center">Click a radar label to see low-scoring evaluations for that dimension.</p>
-                            <div className="flex items-center justify-center">
+                        <DashboardCard 
+                            title="Harm Assessment Scores (Human Scores)" 
+                            subtitle="Average human scores across core rubric dimensions (1=Worst, 5=Best). Click a radar label to see low-scoring evaluations for that dimension."
+                        >
+                            <div className="flex items-center justify-center pt-2">
                                 <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
                             </div>
                         </DashboardCard>
