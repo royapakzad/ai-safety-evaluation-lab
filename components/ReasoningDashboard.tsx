@@ -297,7 +297,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const [selectedModel, setSelectedModel] = useState<string>('All');
 
     const languagePairs = useMemo(() => {
-        const pairs = new Set(evaluations.map(e => e.languagePair).filter(Boolean));
+        const pairs = new Set(evaluations.map(e => e.languagePair).filter(lang => lang && lang !== 'English - English'));
         return ['All', ...Array.from(pairs)];
     }, [evaluations]);
     
@@ -307,7 +307,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     }, [evaluations]);
 
     const filteredEvaluations = useMemo(() => {
-        let filtered = evaluations;
+        let filtered = evaluations.filter(e => e.languagePair !== 'English - English');
         if (selectedLanguagePair !== 'All') {
             filtered = filtered.filter(e => e.languagePair === selectedLanguagePair);
         }
@@ -402,6 +402,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             if (!ev.languagePair || !ev.humanScores?.english || !ev.humanScores?.native) return;
             
             const langName = ev.languagePair.replace('English - ', '').trim();
+
             if (!dataByLang.has(langName)) {
                 dataByLang.set(langName, {});
             }
