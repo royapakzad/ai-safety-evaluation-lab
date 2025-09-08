@@ -4,12 +4,16 @@ import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../cons
 
 // --- HELPER COMPONENTS ---
 
-const DashboardCard: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className = '' }) => (
+const DashboardCard: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; className?: string }> = ({ title, subtitle, children, className = '' }) => (
     <div className={`bg-card text-card-foreground p-6 rounded-xl shadow-md border border-border ${className}`}>
-        <h3 className="text-lg font-semibold text-foreground mb-4 pb-2 border-b border-border">{title}</h3>
+        <div className="border-b border-border mb-4 pb-3">
+             <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+             {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+        </div>
         {children}
     </div>
 );
+
 
 const StatCard: React.FC<{ label: string; value: string | number; icon: React.ReactNode }> = ({ label, value, icon }) => (
     <div className="bg-background p-4 rounded-lg flex items-center gap-4 border border-border/70 shadow-sm">
@@ -114,16 +118,15 @@ const RadarChart: React.FC<{
                 {/* Labels */}
                 {data.labels.map((label, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
-                    const labelRadius = radius + 20; // Push labels out
+                    const labelRadius = radius + 25; // Push labels out slightly more
                     const x = center + labelRadius * Math.cos(angle);
                     const y = center + labelRadius * Math.sin(angle);
                     
-                    // Split label by comma or ' & ' for better wrapping
-                    const lines = label.replace(' and ', ' & ').replace(' to ', '/').split(/, | & /);
-                    const yOffset = -(lines.length - 1) * 5; // Adjust Y for multi-line text
+                    const lines = label.split(' & ');
+                    const yOffset = -(lines.length - 1) * 6; // Adjust Y for multi-line text
 
                     return (
-                        <text key={label} x={x} y={y + yOffset} textAnchor="middle" dominantBaseline="central" fontSize="10" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
+                        <text key={label} x={x} y={y + yOffset} textAnchor="middle" dominantBaseline="central" fontSize="11" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
                            {lines.map((line, index) => (
                                <tspan key={index} x={x} dy={index > 0 ? '1.2em' : '0'}>{line}</tspan>
                            ))}
@@ -560,10 +563,10 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         <div className="space-y-8">
             {drilldownData && <DrilldownModal data={drilldownData} onClose={() => setDrilldownData(null)} />}
             
-            <DashboardCard title="Dashboard Filters">
+            <DashboardCard title="Dashboard Filters" subtitle="Select a language pair or model to refine the data across all charts.">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex items-center gap-4">
-                        <label htmlFor="lang-pair-filter" className="text-sm font-medium whitespace-nowrap">Language Pair:</label>
+                    <div>
+                        <label htmlFor="lang-pair-filter" className="text-sm font-medium text-foreground mb-1 block">Language Pair</label>
                         <select
                             id="lang-pair-filter"
                             value={selectedLanguagePair}
@@ -575,8 +578,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             ))}
                         </select>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <label htmlFor="model-filter" className="text-sm font-medium whitespace-nowrap">LLM Model:</label>
+                    <div>
+                        <label htmlFor="model-filter" className="text-sm font-medium text-foreground mb-1 block">LLM Model</label>
                         <select
                             id="model-filter"
                             value={selectedModel}
@@ -602,14 +605,16 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 </div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <StatCard label="Total Evaluations" value={metrics.totalEvaluations} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM10 7a3 3 0 100 6 3 3 0 000-6zM15.657 5.404a.75.75 0 10-1.06-1.06l-1.061 1.06a.75.75 0 001.06 1.06l1.06-1.06zM5.404 15.657a.75.75 0 10-1.06-1.06l-1.06 1.06a.75.75 0 101.06 1.06l1.06-1.06zM15.657 14.596a.75.75 0 001.06-1.06l-1.06-1.061a.75.75 0 10-1.06 1.06l1.06 1.06zM4.343 5.404a.75.75 0 001.06-1.06l-1.06-1.06a.75.75 0 10-1.06 1.06l1.06 1.06z"/></svg>} />
-                        <StatCard label="Unique Scenarios" value={metrics.uniqueScenarios} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>} />
-                        <StatCard label="Models Tested" value={metrics.modelsTested} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M11.624 3.322a4.5 4.5 0 10-7.248 5.044l-2.008 5.02a.75.75 0 00.933 1.054l5.02-2.008a4.5 4.5 0 103.303-9.11zM13 4.5a3 3 0 11-6 0 3 3 0 016 0z" clipRule="evenodd" /></svg>} />
-                    </div>
+                    <DashboardCard title="Key Metrics" subtitle="A high-level overview of the filtered evaluation data.">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <StatCard label="Total Evaluations" value={metrics.totalEvaluations} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M10.75 2.75a.75.75 0 00-1.5 0v14.5a.75.75 0 001.5 0V2.75z" /><path d="M3.5 10a.75.75 0 01.75-.75h11.5a.75.75 0 010 1.5H4.25A.75.75 0 013.5 10z" /></svg>} />
+                            <StatCard label="Unique Scenarios" value={metrics.uniqueScenarios} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>} />
+                            <StatCard label="Models Tested" value={metrics.modelsTested} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M11.624 3.322a4.5 4.5 0 10-7.248 5.044l-2.008 5.02a.75.75 0 00.933 1.054l5.02-2.008a4.5 4.5 0 103.303-9.11zM13 4.5a3 3 0 11-6 0 3 3 0 016 0z" clipRule="evenodd" /></svg>} />
+                        </div>
+                    </DashboardCard>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <DashboardCard title="Average Performance (Human Scores)">
+                        <DashboardCard title="Average Performance" subtitle="Comparing output metrics between English and native language responses.">
                              <div className="flex justify-end items-center gap-4 text-xs mb-4">
                                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-600 dark:bg-sky-500"></span><span>English</span></div>
                                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-teal-500 dark:bg-teal-400"></span><span>Native Language</span></div>
@@ -621,8 +626,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                 { label: 'Reasoning Words', valueA: metrics.avgReasoningWordsA, valueB: metrics.avgReasoningWordsB, unit: '' },
                             ]} />
                         </DashboardCard>
-                        <DashboardCard title="Harm Assessment Scores (Human Scores)">
-                             <p className="text-xs text-muted-foreground -mt-3 mb-2 text-center">Click a radar label to see low-scoring evaluations for that dimension.</p>
+                        <DashboardCard title="Harm Assessment Scores" subtitle="Average human scores across core rubric dimensions (1=Worst, 5=Best).">
+                             <p className="text-xs text-muted-foreground -mt-5 mb-2 text-center">Click a radar label to see low-scoring evaluations for that dimension.</p>
                             <div className="flex items-center justify-center">
                                 <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
                             </div>
@@ -630,17 +635,17 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     </div>
                     
                     {heatmapData && (
-                        <DashboardCard title="Multilingual Evaluation Disparity Heatmap (Human Scores)">
-                            <p className="text-xs text-muted-foreground -mt-3 mb-4">
-                                This grid shows the average disparity between English and native language responses. The score is calculated as the absolute difference (|Score_English - Score_Native|) for each rubric dimension, where all dimensions are mapped to a 1-5 scale. Therefore, scores range from <strong>0 (no difference)</strong> to a maximum of <strong>4 (highest possible difference)</strong>. Bolder colors indicate greater disparity.
-                            </p>
+                        <DashboardCard 
+                            title="Multilingual Evaluation Disparity Heatmap (Human Scores)"
+                            subtitle="This grid shows the average difference between English and native language scores (|Score_Eng - Score_Nat|), from 0 (no difference) to 4 (max difference). Bolder colors indicate greater disparity."
+                        >
                             <div className="overflow-x-auto custom-scrollbar pb-2">
                                 <div className="grid gap-1.5" style={{ gridTemplateColumns: `minmax(150px, 1fr) repeat(${heatmapData.dimensions.length}, minmax(100px, 1fr))` }}>
                                     {/* Header Row */}
                                     <div className="font-bold text-sm text-muted-foreground">Language</div>
                                     {heatmapData.dimensions.map(dim => (
                                         <div key={dim.key} className="font-bold text-sm text-center text-muted-foreground whitespace-normal" title={dim.label}>
-                                            {dim.label}
+                                            {dim.label.replace(' & ', ' & ')}
                                         </div>
                                     ))}
 
@@ -670,22 +675,26 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                 </div>
                             </div>
                             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                                <span>Low Disparity</span>
+                                <span>Low Disparity (0)</span>
                                 <div className="w-32 h-4 rounded-md" style={{ background: 'linear-gradient(to right, hsl(60, 95%, 80%), hsl(35, 95%, 60%), hsl(10, 90%, 40%))' }}></div>
-                                <span>High Disparity</span>
+                                <span>High Disparity (4)</span>
                             </div>
                         </DashboardCard>
                     )}
                     
-                    <DashboardCard title="Disparity Analysis (Human vs. LLM Scores)">
-                         <p className="text-xs text-muted-foreground -mt-3 mb-3">Click a bar segment to see the evaluations in that category. LLM analysis is based on {disparityChartData.llmCount} completed evaluation(s).</p>
+                    <DashboardCard 
+                        title="Disparity Analysis (Human vs. LLM Scores)"
+                        subtitle={`Comparing how humans and the LLM judge identified disparities. Click a bar segment to see the evaluations. LLM analysis is based on ${disparityChartData.llmCount} completed evaluation(s).`}
+                    >
                         <StackedBarChart humanData={disparityChartData.human} llmData={disparityChartData.llm} onBarClick={handleDisparityBarClick} />
                     </DashboardCard>
 
                     {agreementMetrics && (
-                         <DashboardCard title="Human vs. LLM Agreement">
-                            <p className="text-xs text-muted-foreground -mt-3 mb-3">Agreement rate based on {agreementMetrics.evalCount} evaluation(s) with completed LLM analysis. Slider agreement is defined as scores within +/- 1 point.</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <DashboardCard 
+                            title="Human vs. LLM Agreement Rate"
+                            subtitle={`How often the LLM judge's scores align with human scores, based on ${agreementMetrics.evalCount} evaluation(s). Slider agreement is defined as scores within +/- 1 point.`}
+                         >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                 <div>
                                     <h4 className="font-semibold text-foreground mb-3">Single Response Scores</h4>
                                     <AgreementRateChart data={agreementMetrics.singleResponse} />
