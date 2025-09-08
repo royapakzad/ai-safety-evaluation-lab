@@ -213,9 +213,11 @@ const MultiLanguageHeatmapCell: React.FC<{
     language: string;
     dimensionLabel: string;
     value: number;
+    avgScoreA: number;
+    avgScoreB: number;
     count: number;
     maxValue: number;
-}> = ({ language, dimensionLabel, value, count, maxValue }) => {
+}> = ({ language, dimensionLabel, value, avgScoreA, avgScoreB, count, maxValue }) => {
     // Normalize value from 0 to 1 for color calculation
     const intensity = maxValue > 0 ? value / maxValue : 0;
     // Interpolate hue from yellow (60) to red (0) for a bolder gradient
@@ -229,11 +231,12 @@ const MultiLanguageHeatmapCell: React.FC<{
 
     return (
         <div
-            className="p-2 rounded-md flex justify-center items-center text-center border border-transparent transition-transform duration-200 hover:scale-110 hover:z-10 hover:shadow-lg hover:border-ring"
+            className="p-2 rounded-md flex flex-col justify-center items-center text-center border border-transparent transition-transform duration-200 hover:scale-110 hover:z-10 hover:shadow-lg hover:border-ring"
             style={{ backgroundColor, color: textColor }}
-            title={`${language} - ${dimensionLabel}\nAvg Disparity: ${value.toFixed(2)}\nBased on ${count} evaluations`}
+            title={`${language} - ${dimensionLabel}\nAvg Disparity: ${value.toFixed(2)}\n(Eng: ${avgScoreA.toFixed(2)}, Nat: ${avgScoreB.toFixed(2)})\nBased on ${count} evaluations`}
         >
             <span className="font-bold text-base">{value.toFixed(2)}</span>
+            <span className="text-xs opacity-80 leading-tight">({avgScoreA.toFixed(1)}, {avgScoreB.toFixed(1)})</span>
         </div>
     );
 };
@@ -284,28 +287,6 @@ const AgreementRateChart: React.FC<{data: {label: string, agreement: number}[]}>
         ))}
     </div>
 )
-
-// Helper to get grade badge styling
-const getGradeBadgeClass = (grade: string) => {
-    switch (grade) {
-        case 'A': return 'bg-green-100 text-green-800 border-green-300';
-        case 'B': return 'bg-sky-100 text-sky-800 border-sky-300';
-        case 'C': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-        case 'D': return 'bg-orange-100 text-orange-800 border-orange-300';
-        case 'F': return 'bg-red-100 text-red-800 border-red-300';
-        default: return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-};
-
-// Helper to calculate grade from average score
-const calculateGrade = (avgScore: number): string => {
-    if (avgScore >= 4.5) return 'A';
-    if (avgScore >= 3.5) return 'B';
-    if (avgScore >= 2.5) return 'C';
-    if (avgScore >= 1.5) return 'D';
-    return 'F';
-};
-
 
 // --- MAIN COMPONENT ---
 
@@ -421,7 +402,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             shortLabel: shortLabels[d.key as keyof typeof shortLabels] || d.label
         }));
 
-        const dataByLang = new Map<string, { [key: string]: { sum: number; count: number } }>();
+        const dataByLang = new Map<string, { [key: string]: { sumDisparity: number, sumScoreA: number, sumScoreB: number, count: number } }>();
 
         filteredEvaluations.forEach(ev => {
             if (!ev.languagePair || !ev.humanScores?.english || !ev.humanScores?.native) return;
@@ -436,13 +417,15 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
             dimensions.forEach(dim => {
                 if (!langData[dim.key]) {
-                    langData[dim.key] = { sum: 0, count: 0 };
+                    langData[dim.key] = { sumDisparity: 0, sumScoreA: 0, sumScoreB: 0, count: 0 };
                 }
                 const scoreA = getNumericScore(dim.key, ev.humanScores.english);
                 const scoreB = getNumericScore(dim.key, ev.humanScores.native);
                 const difference = Math.abs(scoreA - scoreB);
 
-                langData[dim.key].sum += difference;
+                langData[dim.key].sumDisparity += difference;
+                langData[dim.key].sumScoreA += scoreA;
+                langData[dim.key].sumScoreB += scoreB;
                 langData[dim.key].count++;
             });
         });
@@ -452,9 +435,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         const heatmapRows = Array.from(dataByLang.entries()).map(([language, langData]) => ({
             language,
             disparities: Object.fromEntries(
-                Object.entries(langData).map(([dimKey, { sum, count }]) => [
+                Object.entries(langData).map(([dimKey, { sumDisparity, sumScoreA, sumScoreB, count }]) => [
                     dimKey,
-                    { value: sum / count, count }
+                    { value: sumDisparity / count, avgScoreA: sumScoreA / count, avgScoreB: sumScoreB / count, count }
                 ])
             )
         }));
@@ -641,37 +624,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         </DashboardCard>
                         <DashboardCard title="Harm Assessment Scores (Human Scores)">
                              <p className="text-xs text-muted-foreground -mt-3 mb-2 text-center">Click a radar label to see low-scoring evaluations for that dimension.</p>
-                            <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                            <div className="flex items-center justify-center">
                                 <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
-                                <div className="w-full md:w-64 flex-shrink-0">
-                                    <div className="text-center mb-4">
-                                        <h4 className="text-sm font-semibold text-foreground mb-1">Assessment Grades</h4>
-                                        <p className="text-xs text-muted-foreground">Letter grade for each dimension.</p>
-                                    </div>
-                                    <div className="space-y-2 text-sm bg-background p-3 rounded-lg border border-border/70">
-                                        <div className="grid grid-cols-3 gap-2 font-bold text-muted-foreground text-xs text-center pb-1 border-b border-border">
-                                            <span>Dimension</span>
-                                            <span>English</span>
-                                            <span>Native</span>
-                                        </div>
-                                        {radarChartData.labels.map((label, index) => {
-                                            const gradeA = calculateGrade(radarChartData.datasets[0].values[index]);
-                                            const gradeB = calculateGrade(radarChartData.datasets[1].values[index]);
-                                            
-                                            return (
-                                                <div key={label} className="grid grid-cols-3 gap-2 items-center text-center">
-                                                    <span className="text-left font-medium text-foreground text-sm">{label}</span>
-                                                    <div className="flex justify-center">
-                                                        <span className={`px-2 py-0.5 rounded-md font-bold text-xs w-8 text-center ${getGradeBadgeClass(gradeA)}`}>{gradeA}</span>
-                                                    </div>
-                                                    <div className="flex justify-center">
-                                                        <span className={`px-2 py-0.5 rounded-md font-bold text-xs w-8 text-center ${getGradeBadgeClass(gradeB)}`}>{gradeB}</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
                             </div>
                         </DashboardCard>
                     </div>
@@ -703,6 +657,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                                         language={row.language}
                                                         dimensionLabel={dim.label}
                                                         value={cellData.value}
+                                                        avgScoreA={cellData.avgScoreA}
+                                                        avgScoreB={cellData.avgScoreB}
                                                         count={cellData.count}
                                                         maxValue={4}
                                                     />
