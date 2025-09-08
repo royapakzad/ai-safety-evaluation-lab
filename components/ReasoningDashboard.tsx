@@ -392,9 +392,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         
         const avgScoresA = sumA.map(v => v / filteredEvaluations.length);
         const avgScoresB = sumB.map(v => v / filteredEvaluations.length);
-        
-        const overallAvgA = avgScoresA.reduce((a, b) => a + b, 0) / avgScoresA.length;
-        const overallAvgB = avgScoresB.reduce((a, b) => a + b, 0) / avgScoresB.length;
 
         return {
             labels,
@@ -403,8 +400,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 { label: 'English', color: '#0284c7', values: avgScoresA }, // sky-600
                 { label: 'Native Language', color: '#14b8a6', values: avgScoresB }, // teal-500
             ],
-            gradeA: calculateGrade(overallAvgA),
-            gradeB: calculateGrade(overallAvgB),
         };
     }, [filteredEvaluations]);
 
@@ -648,24 +643,33 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                              <p className="text-xs text-muted-foreground -mt-3 mb-2 text-center">Click a radar label to see low-scoring evaluations for that dimension.</p>
                             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
                                 <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
-                                <div className="w-full md:w-48 flex-shrink-0 space-y-4">
-                                    <div className="text-center">
-                                        <h4 className="text-sm font-semibold text-foreground mb-1">Overall Grade</h4>
-                                        <p className="text-xs text-muted-foreground">Based on the average of all 6 rubric scores.</p>
+                                <div className="w-full md:w-64 flex-shrink-0">
+                                    <div className="text-center mb-4">
+                                        <h4 className="text-sm font-semibold text-foreground mb-1">Assessment Grades</h4>
+                                        <p className="text-xs text-muted-foreground">Letter grade for each dimension.</p>
                                     </div>
-                                    <div className="flex justify-around md:flex-col md:space-y-3">
-                                        <div className="text-center">
-                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold border-2 mx-auto ${getGradeBadgeClass(radarChartData.gradeA)}`}>
-                                                {radarChartData.gradeA}
-                                            </div>
-                                            <p className="text-sm font-medium mt-1">English</p>
+                                    <div className="space-y-2 text-sm bg-background p-3 rounded-lg border border-border/70">
+                                        <div className="grid grid-cols-3 gap-2 font-bold text-muted-foreground text-xs text-center pb-1 border-b border-border">
+                                            <span>Dimension</span>
+                                            <span>English</span>
+                                            <span>Native</span>
                                         </div>
-                                        <div className="text-center">
-                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold border-2 mx-auto ${getGradeBadgeClass(radarChartData.gradeB)}`}>
-                                                {radarChartData.gradeB}
-                                            </div>
-                                            <p className="text-sm font-medium mt-1">Native Language</p>
-                                        </div>
+                                        {radarChartData.labels.map((label, index) => {
+                                            const gradeA = calculateGrade(radarChartData.datasets[0].values[index]);
+                                            const gradeB = calculateGrade(radarChartData.datasets[1].values[index]);
+                                            
+                                            return (
+                                                <div key={label} className="grid grid-cols-3 gap-2 items-center text-center">
+                                                    <span className="text-left font-medium text-foreground text-sm">{label}</span>
+                                                    <div className="flex justify-center">
+                                                        <span className={`px-2 py-0.5 rounded-md font-bold text-xs w-8 text-center ${getGradeBadgeClass(gradeA)}`}>{gradeA}</span>
+                                                    </div>
+                                                    <div className="flex justify-center">
+                                                        <span className={`px-2 py-0.5 rounded-md font-bold text-xs w-8 text-center ${getGradeBadgeClass(gradeB)}`}>{gradeB}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
