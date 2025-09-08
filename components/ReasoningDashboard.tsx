@@ -106,28 +106,67 @@ const RadarChart: React.FC<{
     );
 };
 
-const StackedBarChart: React.FC<{ 
-    data: { label: string, yes: number, no: number, unsure: number, total: number }[];
-    onBarClick: (label: string, category: 'yes' | 'no' | 'unsure') => void;
-}> = ({ data, onBarClick }) => (
-    <div className="space-y-4 text-sm">
-        {data.map(d => {
+const StackedBarChart: React.FC<{
+    humanData: { label: string, yes: number, no: number, unsure: number, total: number }[];
+    llmData: { label: string, yes: number, no: number, unsure: number, total: number }[] | null;
+    onBarClick: (label: string, category: 'yes' | 'no' | 'unsure', source: 'human' | 'llm') => void;
+}> = ({ humanData, llmData, onBarClick }) => (
+    <div className="space-y-6 text-sm">
+        {humanData.map((d, index) => {
             const yesPercent = d.total > 0 ? (d.yes / d.total) * 100 : 0;
             const noPercent = d.total > 0 ? (d.no / d.total) * 100 : 0;
             const unsurePercent = 100 - yesPercent - noPercent;
+
+            const llmItem = llmData ? llmData[index] : null;
+            const llmYesPercent = llmItem && llmItem.total > 0 ? (llmItem.yes / llmItem.total) * 100 : 0;
+            const llmNoPercent = llmItem && llmItem.total > 0 ? (llmItem.no / llmItem.total) * 100 : 0;
+            const llmUnsurePercent = llmItem ? 100 - llmYesPercent - llmNoPercent : 0;
+
             return (
                 <div key={d.label}>
-                    <p className="font-medium text-foreground mb-1">{d.label}</p>
-                    <div className="w-full flex h-5 rounded-md overflow-hidden bg-muted">
-                        <button className="bg-destructive hover:opacity-80 transition-opacity" style={{ width: `${yesPercent}%` }} title={`Yes: ${d.yes}`} onClick={() => onBarClick(d.label, 'yes')}></button>
-                        <button className="bg-green-500 hover:opacity-80 transition-opacity" style={{ width: `${noPercent}%` }} title={`No: ${d.no}`} onClick={() => onBarClick(d.label, 'no')}></button>
-                        <button className="bg-gray-400 hover:opacity-80 transition-opacity" style={{ width: `${unsurePercent}%` }} title={`Unsure: ${d.unsure}`} onClick={() => onBarClick(d.label, 'unsure')}></button>
+                    <p className="font-medium text-foreground mb-2">{d.label}</p>
+                    
+                    {/* Human Bar */}
+                    <div className="flex items-center gap-3">
+                        <span className="w-12 text-right text-muted-foreground text-xs shrink-0">👤 Human</span>
+                        <div className="flex-grow">
+                            <div className="w-full flex h-5 rounded-md overflow-hidden bg-muted">
+                                <button className="bg-destructive hover:opacity-80 transition-opacity" style={{ width: `${yesPercent}%` }} title={`Yes: ${d.yes}`} onClick={() => onBarClick(d.label, 'yes', 'human')}></button>
+                                <button className="bg-green-500 hover:opacity-80 transition-opacity" style={{ width: `${noPercent}%` }} title={`No: ${d.no}`} onClick={() => onBarClick(d.label, 'no', 'human')}></button>
+                                <button className="bg-gray-400 hover:opacity-80 transition-opacity" style={{ width: `${unsurePercent}%` }} title={`Unsure: ${d.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'human')}></button>
+                            </div>
+                            <div className="flex justify-between text-xs mt-1 text-muted-foreground">
+                                <span>{d.yes} Yes</span>
+                                <span>{d.no} No</span>
+                                <span>{d.unsure} Unsure</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex justify-between text-xs mt-1 text-muted-foreground">
-                        <span>{d.yes} Yes</span>
-                        <span>{d.no} No</span>
-                        <span>{d.unsure} Unsure</span>
-                    </div>
+                    
+                    {/* LLM Bar */}
+                    {llmItem && (
+                        <div className="flex items-center gap-3 mt-2">
+                            <span className="w-12 text-right text-muted-foreground text-xs shrink-0">🤖 LLM</span>
+                            <div className="flex-grow">
+                                {llmItem.total > 0 ? (
+                                    <>
+                                        <div className="w-full flex h-5 rounded-md overflow-hidden bg-muted">
+                                            <button className="bg-destructive/70 hover:opacity-90 transition-opacity" style={{ width: `${llmYesPercent}%` }} title={`Yes: ${llmItem.yes}`} onClick={() => onBarClick(d.label, 'yes', 'llm')}></button>
+                                            <button className="bg-green-500/70 hover:opacity-90 transition-opacity" style={{ width: `${llmNoPercent}%` }} title={`No: ${llmItem.no}`} onClick={() => onBarClick(d.label, 'no', 'llm')}></button>
+                                            <button className="bg-gray-400/70 hover:opacity-90 transition-opacity" style={{ width: `${llmUnsurePercent}%` }} title={`Unsure: ${llmItem.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'llm')}></button>
+                                        </div>
+                                        <div className="flex justify-between text-xs mt-1 text-muted-foreground">
+                                            <span>{llmItem.yes} Yes</span>
+                                            <span>{llmItem.no} No</span>
+                                            <span>{llmItem.unsure} Unsure</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center text-xs text-muted-foreground italic h-5 flex items-center">No LLM data for this item.</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )
         })}
@@ -266,7 +305,11 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
     const disparityChartData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
-        return DISPARITY_CRITERIA.map(crit => {
+
+        const llmEvaluable = filteredEvaluations.filter(e => e.llmEvaluationStatus === 'completed' && e.llmScores?.disparity);
+        const llmEvalCount = llmEvaluable.length;
+
+        const humanData = DISPARITY_CRITERIA.map(crit => {
             const counts = { yes: 0, no: 0, unsure: 0 };
             filteredEvaluations.forEach(ev => {
                 const value = ev.humanScores.disparity[crit.key as keyof typeof ev.humanScores.disparity];
@@ -274,6 +317,17 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             });
             return { ...crit, ...counts, total: filteredEvaluations.length };
         });
+
+        const llmData = llmEvalCount > 0 ? DISPARITY_CRITERIA.map(crit => {
+            const counts = { yes: 0, no: 0, unsure: 0 };
+            llmEvaluable.forEach(ev => {
+                const value = ev.llmScores!.disparity[crit.key as keyof typeof ev.llmScores.disparity];
+                if (value === 'yes') counts.yes++; else if (value === 'no') counts.no++; else counts.unsure++;
+            });
+            return { ...crit, ...counts, total: llmEvalCount };
+        }) : null;
+
+        return { human: humanData, llm: llmData, count: filteredEvaluations.length, llmCount: llmEvalCount };
     }, [filteredEvaluations]);
     
     const agreementMetrics = useMemo(() => {
@@ -323,11 +377,19 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     }, [filteredEvaluations, getNumericScore]);
 
 
-    const handleDisparityBarClick = (label: string, category: 'yes' | 'no' | 'unsure') => {
+    const handleDisparityBarClick = (label: string, category: 'yes' | 'no' | 'unsure', source: 'human' | 'llm') => {
         const crit = DISPARITY_CRITERIA.find(c => c.label === label);
         if (!crit) return;
-        const evalsToDrill = filteredEvaluations.filter(ev => ev.humanScores.disparity[crit.key as keyof typeof ev.humanScores.disparity] === category);
-        setDrilldownData({ title: `Disparity: "${label}" is "${category}"`, evaluations: evalsToDrill });
+        const evalsToDrill = filteredEvaluations.filter(ev => {
+            if (source === 'human') {
+                return ev.humanScores.disparity[crit.key as keyof typeof ev.humanScores.disparity] === category;
+            }
+            if (source === 'llm' && ev.llmEvaluationStatus === 'completed' && ev.llmScores?.disparity) {
+                return ev.llmScores.disparity[crit.key as keyof typeof ev.llmScores.disparity] === category;
+            }
+            return false;
+        });
+        setDrilldownData({ title: `${source.charAt(0).toUpperCase() + source.slice(1)} Disparity: "${label}" is "${category}"`, evaluations: evalsToDrill });
     };
 
     const handleRadarLabelClick = (label: string, index: number) => {
@@ -398,9 +460,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         </DashboardCard>
                     </div>
                     
-                    <DashboardCard title="Disparity Analysis (Human Scores)">
-                         <p className="text-xs text-muted-foreground -mt-3 mb-3">Click a bar segment to see the evaluations in that category.</p>
-                        <StackedBarChart data={disparityChartData} onBarClick={handleDisparityBarClick} />
+                    <DashboardCard title="Disparity Analysis (Human vs. LLM Scores)">
+                         <p className="text-xs text-muted-foreground -mt-3 mb-3">Click a bar segment to see the evaluations in that category. LLM analysis is based on {disparityChartData.llmCount} completed evaluation(s).</p>
+                        <StackedBarChart humanData={disparityChartData.human} llmData={disparityChartData.llm} onBarClick={handleDisparityBarClick} />
                     </DashboardCard>
 
                     {agreementMetrics && (
