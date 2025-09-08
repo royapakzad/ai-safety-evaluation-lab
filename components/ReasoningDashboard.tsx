@@ -55,15 +55,16 @@ const RadarChart: React.FC<{
 }> = ({ data, onLabelClick }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
 
-    const size = 300;
+    const size = 360; // Increased size for labels
     const center = size / 2;
     const numLevels = 5;
-    const levelDistance = (center * 0.8) / numLevels;
+    const radius = center * 0.7; // Radius for chart area
+    const levelDistance = radius / numLevels;
     const numAxes = data.labels.length;
 
     const getPointCoordinates = (value: number, index: number) => {
         const angle = (Math.PI * 2 * index) / numAxes - Math.PI / 2;
-        const distance = (value / numLevels) * (center * 0.8);
+        const distance = (value / numLevels) * radius;
         return {
             x: center + distance * Math.cos(angle),
             y: center + distance * Math.sin(angle),
@@ -86,7 +87,7 @@ const RadarChart: React.FC<{
                 ))}
                 {data.labels.map((_, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
-                    return <line key={i} x1={center} y1={center} x2={center + (center * 0.8) * Math.cos(angle)} y2={center + (center * 0.8) * Math.sin(angle)} stroke="var(--color-border)" />;
+                    return <line key={i} x1={center} y1={center} x2={center + radius * Math.cos(angle)} y2={center + radius * Math.sin(angle)} stroke="var(--color-border)" />;
                 })}
                 {/* Data Polygons */}
                 {points.map((p, i) => (
@@ -113,11 +114,19 @@ const RadarChart: React.FC<{
                 {/* Labels */}
                 {data.labels.map((label, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
-                    const x = center + (center * 0.95) * Math.cos(angle);
-                    const y = center + (center * 0.95) * Math.sin(angle);
+                    const labelRadius = radius + 20; // Push labels out
+                    const x = center + labelRadius * Math.cos(angle);
+                    const y = center + labelRadius * Math.sin(angle);
+                    
+                    // Split label by comma or ' & ' for better wrapping
+                    const lines = label.replace(' and ', ' & ').replace(' to ', '/').split(/, | & /);
+                    const yOffset = -(lines.length - 1) * 5; // Adjust Y for multi-line text
+
                     return (
-                        <text key={label} x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize="10" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
-                           {label}
+                        <text key={label} x={x} y={y + yOffset} textAnchor="middle" dominantBaseline="central" fontSize="10" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
+                           {lines.map((line, index) => (
+                               <tspan key={index} x={x} dy={index > 0 ? '1.2em' : '0'}>{line}</tspan>
+                           ))}
                         </text>
                     )
                 })}
@@ -357,7 +366,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const radarChartData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
         const dimensions = ['actionability_practicality', 'factuality', 'safety_security_privacy', 'tone_dignity_empathy', 'non_discrimination_fairness', 'freedom_of_access_censorship'] as const;
-        const labels = ['Action', 'Fact', 'Safety', 'Tone', 'Fairness', 'Freedom'];
+        const labels = dimensions.map(dKey => RUBRIC_DIMENSIONS.find(d => d.key === dKey)?.label || dKey);
         
         const sumA = dimensions.map(() => 0);
         const sumB = dimensions.map(() => 0);
@@ -387,19 +396,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const heatmapData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
 
-        const shortLabels: { [key: string]: string } = {
-            "actionability_practicality": "Actionability",
-            "factuality": "Factuality",
-            "safety_security_privacy": "Safety",
-            "tone_dignity_empathy": "Tone",
-            "non_discrimination_fairness": "Fairness",
-            "freedom_of_access_censorship": "Freedom",
-        };
-
         const dimensions = RUBRIC_DIMENSIONS.map(d => ({ 
             key: d.key, 
             label: d.label, 
-            shortLabel: shortLabels[d.key as keyof typeof shortLabels] || d.label
         }));
 
         const dataByLang = new Map<string, { [key: string]: { sumDisparity: number, sumScoreA: number, sumScoreB: number, count: number } }>();
@@ -631,7 +630,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     </div>
                     
                     {heatmapData && (
-                        <DashboardCard title="Multilingual Evaluation Disparity Heatmap">
+                        <DashboardCard title="Multilingual Evaluation Disparity Heatmap (Human Scores)">
                             <p className="text-xs text-muted-foreground -mt-3 mb-4">
                                 This grid shows the average disparity between English and native language responses. The score is calculated as the absolute difference (|Score_English - Score_Native|) for each rubric dimension, where all dimensions are mapped to a 1-5 scale. Therefore, scores range from <strong>0 (no difference)</strong> to a maximum of <strong>4 (highest possible difference)</strong>. Bolder colors indicate greater disparity.
                             </p>
@@ -640,8 +639,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                     {/* Header Row */}
                                     <div className="font-bold text-sm text-muted-foreground">Language</div>
                                     {heatmapData.dimensions.map(dim => (
-                                        <div key={dim.key} className="font-bold text-sm text-center text-muted-foreground" title={dim.label}>
-                                            {dim.shortLabel}
+                                        <div key={dim.key} className="font-bold text-sm text-center text-muted-foreground whitespace-normal" title={dim.label}>
+                                            {dim.label}
                                         </div>
                                     ))}
 
