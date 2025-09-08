@@ -131,7 +131,7 @@ const StackedBarChart: React.FC<{
                         <span className="w-12 text-right text-muted-foreground text-xs shrink-0">👤 Human</span>
                         <div className="flex-grow">
                             <div className="w-full flex h-5 rounded-md overflow-hidden bg-muted">
-                                <button className="bg-destructive hover:opacity-80 transition-opacity" style={{ width: `${yesPercent}%` }} title={`Yes: ${d.yes}`} onClick={() => onBarClick(d.label, 'yes', 'human')}></button>
+                                <button className="bg-red-500 hover:opacity-80 transition-opacity" style={{ width: `${yesPercent}%` }} title={`Yes: ${d.yes}`} onClick={() => onBarClick(d.label, 'yes', 'human')}></button>
                                 <button className="bg-green-500 hover:opacity-80 transition-opacity" style={{ width: `${noPercent}%` }} title={`No: ${d.no}`} onClick={() => onBarClick(d.label, 'no', 'human')}></button>
                                 <button className="bg-gray-400 hover:opacity-80 transition-opacity" style={{ width: `${unsurePercent}%` }} title={`Unsure: ${d.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'human')}></button>
                             </div>
@@ -151,9 +151,9 @@ const StackedBarChart: React.FC<{
                                 {llmItem.total > 0 ? (
                                     <>
                                         <div className="w-full flex h-5 rounded-md overflow-hidden bg-muted">
-                                            <button className="bg-destructive/70 hover:opacity-90 transition-opacity" style={{ width: `${llmYesPercent}%` }} title={`Yes: ${llmItem.yes}`} onClick={() => onBarClick(d.label, 'yes', 'llm')}></button>
-                                            <button className="bg-green-500/70 hover:opacity-90 transition-opacity" style={{ width: `${llmNoPercent}%` }} title={`No: ${llmItem.no}`} onClick={() => onBarClick(d.label, 'no', 'llm')}></button>
-                                            <button className="bg-gray-400/70 hover:opacity-90 transition-opacity" style={{ width: `${llmUnsurePercent}%` }} title={`Unsure: ${llmItem.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'llm')}></button>
+                                            <button className="bg-red-400 hover:bg-red-500 transition-colors" style={{ width: `${llmYesPercent}%` }} title={`Yes: ${llmItem.yes}`} onClick={() => onBarClick(d.label, 'yes', 'llm')}></button>
+                                            <button className="bg-green-400 hover:bg-green-500 transition-colors" style={{ width: `${llmNoPercent}%` }} title={`No: ${llmItem.no}`} onClick={() => onBarClick(d.label, 'no', 'llm')}></button>
+                                            <button className="bg-gray-300 hover:bg-gray-400 transition-colors" style={{ width: `${llmUnsurePercent}%` }} title={`Unsure: ${llmItem.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'llm')}></button>
                                         </div>
                                         <div className="flex justify-between text-xs mt-1 text-muted-foreground">
                                             <span>{llmItem.yes} Yes</span>
@@ -301,7 +301,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 { label: 'Response B', color: '#14b8a6', values: sumB.map(v => v / filteredEvaluations.length) }, // teal-500
             ]
         };
-    }, [filteredEvaluations, getNumericScore]);
+    }, [filteredEvaluations]);
 
     const disparityChartData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
@@ -363,7 +363,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             let agreements = 0;
             completedEvals.forEach(ev => {
                 const humanVal = ev.humanScores.disparity[crit.key as keyof typeof ev.humanScores.disparity];
-                const llmVal = ev.llmScores!.disparity[crit.key as keyof typeof ev.llmScores.disparity];
+                // Fix: Corrected `llmScores` to `ev.llmScores` to reference the property of the current evaluation object.
+                const llmVal = ev.llmScores!.disparity[crit.key as keyof typeof ev.llmScores!.disparity];
                 if (humanVal === llmVal) agreements++;
             });
             return { label: crit.label, agreement: (agreements / completedEvals.length) * 100 };
@@ -374,7 +375,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             disparity: disparityAgreementData,
             evalCount: completedEvals.length
         };
-    }, [filteredEvaluations, getNumericScore]);
+    }, [filteredEvaluations]);
 
 
     const handleDisparityBarClick = (label: string, category: 'yes' | 'no' | 'unsure', source: 'human' | 'llm') => {
