@@ -209,6 +209,24 @@ const StackedBarChart: React.FC<{
     </div>
 );
 
+const HeatmapCell: React.FC<{ label: string; fullLabel: string; value: number; maxValue: number }> = ({ label, fullLabel, value, maxValue }) => {
+    // Normalize value from 0 to 1
+    const intensity = maxValue > 0 ? value / maxValue : 0;
+    // Use HSL for better color control: Orange color (hue=30), saturate and lighten based on intensity
+    const backgroundColor = `hsl(25, 95%, ${95 - (intensity * 45)}%)`; // Lightness from 95% (very light orange) to 50% (orange)
+    const textColor = intensity > 0.6 ? 'var(--color-primary-foreground)' : 'var(--color-foreground)';
+
+    return (
+        <div 
+            className="p-4 rounded-lg flex flex-col justify-center items-center text-center border border-border/50 transition-transform duration-200 hover:scale-105"
+            style={{ backgroundColor, color: textColor }}
+            title={`${fullLabel} - Average Disparity: ${value.toFixed(2)}`}
+        >
+            <div className="font-bold text-2xl">{value.toFixed(2)}</div>
+            <div className="text-xs font-medium uppercase tracking-wider mt-1">{label}</div>
+        </div>
+    );
+};
 
 const DrilldownModal: React.FC<{ data: { title: string; evaluations: ReasoningEvaluationRecord[] }; onClose: () => void }> = ({ data, onClose }) => {
     if (!data) return null;
@@ -347,6 +365,43 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 { label: 'Native Language', color: '#14b8a6', values: sumB.map(v => v / filteredEvaluations.length) }, // teal-500
             ]
         };
+    }, [filteredEvaluations]);
+
+    const heatmapData = useMemo(() => {
+        if (filteredEvaluations.length === 0) return null;
+
+        const dimensions = RUBRIC_DIMENSIONS.map(d => ({ key: d.key, label: d.label }));
+        const shortLabels: { [key: string]: string } = {
+            "actionability_practicality": "Actionability",
+            "factuality": "Factuality",
+            "safety_security_privacy": "Safety",
+            "tone_dignity_empathy": "Tone",
+            "non_discrimination_fairness": "Fairness",
+            "freedom_of_access_censorship": "Freedom",
+        };
+        
+        const disparitySums = new Map<string, number>(dimensions.map(d => [d.key, 0]));
+        let validEvals = 0;
+
+        filteredEvaluations.forEach(ev => {
+            if (ev.humanScores?.english && ev.humanScores?.native) {
+                validEvals++;
+                dimensions.forEach(dim => {
+                    const scoreA = getNumericScore(dim.key, ev.humanScores.english);
+                    const scoreB = getNumericScore(dim.key, ev.humanScores.native);
+                    const difference = Math.abs(scoreA - scoreB);
+                    disparitySums.set(dim.key, (disparitySums.get(dim.key) ?? 0) + difference);
+                });
+            }
+        });
+
+        if (validEvals === 0) return null;
+
+        return dimensions.map(dim => ({
+            label: dim.label,
+            shortLabel: shortLabels[dim.key] || dim.label,
+            value: (disparitySums.get(dim.key) ?? 0) / validEvals
+        }));
     }, [filteredEvaluations]);
 
     const disparityChartData = useMemo(() => {
@@ -525,6 +580,30 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
                         </DashboardCard>
                     </div>
+
+                    {heatmapData && (
+                        <DashboardCard title="Evaluation Disparity Heatmap (Human Scores)">
+                            <p className="text-xs text-muted-foreground -mt-3 mb-4">
+                                Average absolute difference in scores between English and Native Language responses. Higher values indicate greater disparity.
+                            </p>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {heatmapData.map(item => (
+                                    <HeatmapCell 
+                                        key={item.label}
+                                        label={item.shortLabel}
+                                        fullLabel={item.label}
+                                        value={item.value}
+                                        maxValue={4} // Max possible difference is 5 - 1 = 4
+                                    />
+                                ))}
+                            </div>
+                            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                                <span>Low Disparity</span>
+                                <div className="w-24 h-4 rounded-md" style={{ background: 'linear-gradient(to right, hsl(25, 95%, 95%), hsl(25, 95%, 50%))' }}></div>
+                                <span>High Disparity</span>
+                            </div>
+                        </DashboardCard>
+                    )}
                     
                     <DashboardCard title="Disparity Analysis (Human vs. LLM Scores)">
                          <p className="text-xs text-muted-foreground -mt-3 mb-3">Click a bar segment to see the evaluations in that category. LLM analysis is based on {disparityChartData.llmCount} completed evaluation(s).</p>
