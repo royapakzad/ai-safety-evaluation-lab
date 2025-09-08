@@ -300,6 +300,20 @@ const AgreementRateChart: React.FC<{data: {label: string, agreement: number}[]}>
     </div>
 )
 
+// A helper to shorten labels just for the dashboard display
+const getShortLabel = (longLabel: string): string => {
+    const labelMap: { [key: string]: string } = {
+        'Actionability and Practicality': 'Actionability & Practicality',
+        'Factuality': 'Factuality',
+        'Safety, Security, and Privacy': 'Security & Privacy',
+        'Tone, Dignity, and Empathy': 'Tone & Empathy',
+        'Non-Discrimination & Fairness': 'Non-Discrimination & Fairness',
+        'Freedom of Access to Information, Censorship and Refusal': 'Censorship and Refusal',
+    };
+    return labelMap[longLabel] || longLabel;
+};
+
+
 // --- MAIN COMPONENT ---
 
 interface ReasoningDashboardProps {
@@ -369,7 +383,11 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const radarChartData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
         const dimensions = ['actionability_practicality', 'factuality', 'safety_security_privacy', 'tone_dignity_empathy', 'non_discrimination_fairness', 'freedom_of_access_censorship'] as const;
-        const labels = dimensions.map(dKey => RUBRIC_DIMENSIONS.find(d => d.key === dKey)?.label || dKey);
+        
+        const labels = dimensions.map(dKey => {
+            const longLabel = RUBRIC_DIMENSIONS.find(d => d.key === dKey)?.label || dKey;
+            return getShortLabel(longLabel);
+        });
         
         const sumA = dimensions.map(() => 0);
         const sumB = dimensions.map(() => 0);
@@ -401,7 +419,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
         const dimensions = RUBRIC_DIMENSIONS.map(d => ({ 
             key: d.key, 
-            label: d.label, 
+            label: getShortLabel(d.label),
+            fullLabel: d.label,
         }));
 
         const dataByLang = new Map<string, { [key: string]: { sumDisparity: number, sumScoreA: number, sumScoreB: number, count: number } }>();
@@ -421,8 +440,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 if (!langData[dim.key]) {
                     langData[dim.key] = { sumDisparity: 0, sumScoreA: 0, sumScoreB: 0, count: 0 };
                 }
-                const scoreA = getNumericScore(dim.key, ev.humanScores.english);
-                const scoreB = getNumericScore(dim.key, ev.humanScores.native);
+                const scoreA = getNumericScore(dim.key as any, ev.humanScores.english);
+                const scoreB = getNumericScore(dim.key as any, ev.humanScores.native);
                 const difference = Math.abs(scoreA - scoreB);
 
                 langData[dim.key].sumDisparity += difference;
@@ -506,13 +525,14 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     if (humanScoreB === llmScoreB) agreements++;
                 }
             });
-            return { label: dim.label, agreement: (agreements / (completedEvals.length * 2)) * 100 };
+            return { label: getShortLabel(dim.label), agreement: (agreements / (completedEvals.length * 2)) * 100 };
         });
         
         const disparityAgreementData = DISPARITY_CRITERIA.map(crit => {
             let agreements = 0;
             completedEvals.forEach(ev => {
                 const humanVal = ev.humanScores.disparity[crit.key as keyof typeof ev.humanScores.disparity];
+                // FIX: `llmScores` is not a variable, it's a property of `ev`. Changed `typeof llmScores.disparity` to `typeof ev.llmScores!.disparity`.
                 const llmVal = ev.llmScores!.disparity[crit.key as keyof typeof ev.llmScores!.disparity];
                 if (humanVal === llmVal) agreements++;
             });
@@ -547,8 +567,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         const dimensionKey = radarChartData.dimensions[index];
         const dimensionLabel = RUBRIC_DIMENSIONS.find(d => d.key === dimensionKey)?.label || label;
         const lowScoringEvals = filteredEvaluations.filter(ev => {
-            const scoreA = getNumericScore(dimensionKey, ev.humanScores.english);
-            const scoreB = getNumericScore(dimensionKey, ev.humanScores.native);
+            const scoreA = getNumericScore(dimensionKey as any, ev.humanScores.english);
+            const scoreB = getNumericScore(dimensionKey as any, ev.humanScores.native);
             return scoreA < 3 || scoreB < 3;
         });
         setDrilldownData({ title: `Low Scores (< 3) for "${dimensionLabel}"`, evaluations: lowScoringEvals });
@@ -644,8 +664,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                     {/* Header Row */}
                                     <div className="font-bold text-sm text-muted-foreground">Language</div>
                                     {heatmapData.dimensions.map(dim => (
-                                        <div key={dim.key} className="font-bold text-sm text-center text-muted-foreground whitespace-normal" title={dim.label}>
-                                            {dim.label.replace(' & ', ' & ')}
+                                        <div key={dim.key} className="font-bold text-sm text-center text-muted-foreground whitespace-normal" title={dim.fullLabel}>
+                                            {dim.label}
                                         </div>
                                     ))}
 
