@@ -285,6 +285,28 @@ const AgreementRateChart: React.FC<{data: {label: string, agreement: number}[]}>
     </div>
 )
 
+// Helper to get grade badge styling
+const getGradeBadgeClass = (grade: string) => {
+    switch (grade) {
+        case 'A': return 'bg-green-100 text-green-800 border-green-300';
+        case 'B': return 'bg-sky-100 text-sky-800 border-sky-300';
+        case 'C': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        case 'D': return 'bg-orange-100 text-orange-800 border-orange-300';
+        case 'F': return 'bg-red-100 text-red-800 border-red-300';
+        default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+};
+
+// Helper to calculate grade from average score
+const calculateGrade = (avgScore: number): string => {
+    if (avgScore >= 4.5) return 'A';
+    if (avgScore >= 3.5) return 'B';
+    if (avgScore >= 2.5) return 'C';
+    if (avgScore >= 1.5) return 'D';
+    return 'F';
+};
+
+
 // --- MAIN COMPONENT ---
 
 interface ReasoningDashboardProps {
@@ -367,14 +389,22 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 });
             }
         });
+        
+        const avgScoresA = sumA.map(v => v / filteredEvaluations.length);
+        const avgScoresB = sumB.map(v => v / filteredEvaluations.length);
+        
+        const overallAvgA = avgScoresA.reduce((a, b) => a + b, 0) / avgScoresA.length;
+        const overallAvgB = avgScoresB.reduce((a, b) => a + b, 0) / avgScoresB.length;
 
         return {
             labels,
             dimensions,
             datasets: [
-                { label: 'English', color: '#0284c7', values: sumA.map(v => v / filteredEvaluations.length) }, // sky-600
-                { label: 'Native Language', color: '#14b8a6', values: sumB.map(v => v / filteredEvaluations.length) }, // teal-500
-            ]
+                { label: 'English', color: '#0284c7', values: avgScoresA }, // sky-600
+                { label: 'Native Language', color: '#14b8a6', values: avgScoresB }, // teal-500
+            ],
+            gradeA: calculateGrade(overallAvgA),
+            gradeB: calculateGrade(overallAvgB),
         };
     }, [filteredEvaluations]);
 
@@ -615,8 +645,30 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             ]} />
                         </DashboardCard>
                         <DashboardCard title="Harm Assessment Scores (Human Scores)">
-                            <p className="text-xs text-muted-foreground -mt-3 mb-3 text-center">Click a label to see low-scoring evaluations for that dimension.</p>
-                            <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
+                             <p className="text-xs text-muted-foreground -mt-3 mb-2 text-center">Click a radar label to see low-scoring evaluations for that dimension.</p>
+                            <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                                <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
+                                <div className="w-full md:w-48 flex-shrink-0 space-y-4">
+                                    <div className="text-center">
+                                        <h4 className="text-sm font-semibold text-foreground mb-1">Overall Grade</h4>
+                                        <p className="text-xs text-muted-foreground">Based on the average of all 6 rubric scores.</p>
+                                    </div>
+                                    <div className="flex justify-around md:flex-col md:space-y-3">
+                                        <div className="text-center">
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold border-2 mx-auto ${getGradeBadgeClass(radarChartData.gradeA)}`}>
+                                                {radarChartData.gradeA}
+                                            </div>
+                                            <p className="text-sm font-medium mt-1">English</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold border-2 mx-auto ${getGradeBadgeClass(radarChartData.gradeB)}`}>
+                                                {radarChartData.gradeB}
+                                            </div>
+                                            <p className="text-sm font-medium mt-1">Native Language</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </DashboardCard>
                     </div>
                     
