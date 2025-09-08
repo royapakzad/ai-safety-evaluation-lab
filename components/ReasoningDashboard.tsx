@@ -53,22 +53,32 @@ const RadarChart: React.FC<{
     data: { labels: string[], datasets: { label: string; color: string; values: number[] }[] };
     onLabelClick: (label: string, index: number) => void;
 }> = ({ data, onLabelClick }) => {
+    const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
+
     const size = 300;
     const center = size / 2;
     const numLevels = 5;
     const levelDistance = (center * 0.8) / numLevels;
     const numAxes = data.labels.length;
 
+    const getPointCoordinates = (value: number, index: number) => {
+        const angle = (Math.PI * 2 * index) / numAxes - Math.PI / 2;
+        const distance = (value / numLevels) * (center * 0.8);
+        return {
+            x: center + distance * Math.cos(angle),
+            y: center + distance * Math.sin(angle),
+        };
+    };
+
     const points = data.datasets.map(dataset => 
         dataset.values.map((value, i) => {
-            const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
-            const distance = (value / numLevels) * (center * 0.8);
-            return `${center + distance * Math.cos(angle)},${center + distance * Math.sin(angle)}`;
+            const { x, y } = getPointCoordinates(value, i);
+            return `${x},${y}`;
         }).join(' ')
     );
 
     return (
-        <div className="flex flex-col items-center">
+        <div className="relative flex flex-col items-center">
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
                 {/* Levels and Axes */}
                 {[...Array(numLevels)].map((_, level) => (
@@ -82,6 +92,24 @@ const RadarChart: React.FC<{
                 {points.map((p, i) => (
                      <polygon key={i} points={p} fill={data.datasets[i].color} fillOpacity="0.3" stroke={data.datasets[i].color} strokeWidth="2" />
                 ))}
+                 {/* Hover Hotspots */}
+                {data.datasets.map(dataset => 
+                    dataset.values.map((value, i) => {
+                        const { x, y } = getPointCoordinates(value, i);
+                        return (
+                            <circle
+                                key={`${dataset.label}-${i}`}
+                                cx={x}
+                                cy={y}
+                                r="6" // hover radius
+                                fill="transparent"
+                                onMouseEnter={() => setTooltip({ x, y: y - 12, text: `${dataset.label}: ${value.toFixed(2)}`})}
+                                onMouseLeave={() => setTooltip(null)}
+                                className="cursor-pointer"
+                            />
+                        );
+                    })
+                )}
                 {/* Labels */}
                 {data.labels.map((label, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
@@ -94,6 +122,14 @@ const RadarChart: React.FC<{
                     )
                 })}
             </svg>
+             {tooltip && (
+                <div
+                    className="absolute bg-popover text-popover-foreground text-xs font-semibold px-2 py-1 rounded-md shadow-lg pointer-events-none transition-opacity duration-200"
+                    style={{ left: tooltip.x, top: tooltip.y, transform: 'translateX(-50%)' }}
+                >
+                    {tooltip.text}
+                </div>
+            )}
             <div className="flex gap-4 mt-4 text-xs">
                 {data.datasets.map(d => (
                     <div key={d.label} className="flex items-center gap-1.5">
@@ -307,8 +343,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             labels,
             dimensions,
             datasets: [
-                { label: 'Response A', color: '#0284c7', values: sumA.map(v => v / filteredEvaluations.length) }, // sky-600
-                { label: 'Response B', color: '#14b8a6', values: sumB.map(v => v / filteredEvaluations.length) }, // teal-500
+                { label: 'English', color: '#0284c7', values: sumA.map(v => v / filteredEvaluations.length) }, // sky-600
+                { label: 'Native Language', color: '#14b8a6', values: sumB.map(v => v / filteredEvaluations.length) }, // teal-500
             ]
         };
     }, [filteredEvaluations]);
@@ -373,7 +409,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             let agreements = 0;
             completedEvals.forEach(ev => {
                 const humanVal = ev.humanScores.disparity[crit.key as keyof typeof ev.humanScores.disparity];
-                // Fix: Corrected `llmScores` to `ev.llmScores` to reference the property of the current evaluation object.
                 const llmVal = ev.llmScores!.disparity[crit.key as keyof typeof ev.llmScores!.disparity];
                 if (humanVal === llmVal) agreements++;
             });
@@ -475,8 +510,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <DashboardCard title="Average Performance (Human Scores)">
                              <div className="flex justify-end items-center gap-4 text-xs mb-4">
-                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-600 dark:bg-sky-500"></span><span>Response A</span></div>
-                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-teal-500 dark:bg-teal-400"></span><span>Response B</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-600 dark:bg-sky-500"></span><span>English</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-teal-500 dark:bg-teal-400"></span><span>Native Language</span></div>
                             </div>
                             <BarChart data={[
                                 { label: 'Generation Time', valueA: metrics.avgTimeA, valueB: metrics.avgTimeB, unit: 's' },
