@@ -35,6 +35,7 @@ The platform supports research into the scalability and reliability of AI evalua
 
 ### D. Interactive Dashboard (Multilingual Disparity & Model Analytics)
 An interactive, filterable dashboard provides both high-level and detailed views of evaluation results. Users can refine data by language pair and model, then explore comparisons of English vs. native language outputs across performance metrics (generation time, word counts, reasoning length), rubric-based human scores (via radar charts), and multilingual disparities (heatmaps). It also visualizes human vs. LLM judge assessments through stacked bars, highlights agreement rates, and enables cross-model comparisons of quality, disparity flags, and performance.
+
 ---
 
 ## 3. Benefits: Why Multilingual Evaluation Matters for Responsible AI
