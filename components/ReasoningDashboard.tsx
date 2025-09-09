@@ -39,13 +39,13 @@ const BarChart: React.FC<{ data: { label: string; valueA: number; valueB: number
                         <div className="flex justify-between items-center mb-1 text-muted-foreground">
                             <span className="font-medium text-foreground">{label}</span>
                             <div className="flex gap-4 font-mono">
-                                <span className="text-sky-600 dark:text-sky-400">{valueA.toFixed(2)}{unit}</span>
-                                <span className="text-teal-500 dark:text-teal-400">{valueB.toFixed(2)}{unit}</span>
+                                <span className="text-primary">{valueA.toFixed(2)}{unit}</span>
+                                <span className="text-indigo-500 dark:text-indigo-400">{valueB.toFixed(2)}{unit}</span>
                             </div>
                         </div>
                         <div className="w-full bg-muted rounded-full h-4 flex overflow-hidden">
-                            <div className="bg-sky-600 dark:bg-sky-500 h-full" style={{ width: `${percentA}%` }}></div>
-                            <div className="bg-teal-500 dark:bg-teal-400 h-full" style={{ width: `${100-percentA}%` }}></div>
+                            <div className="bg-primary h-full" style={{ width: `${percentA}%` }}></div>
+                            <div className="bg-indigo-500 dark:bg-indigo-400 h-full" style={{ width: `${100-percentA}%` }}></div>
                         </div>
                     </div>
                 )
@@ -180,9 +180,9 @@ const StackedBarChart: React.FC<{
                         <span className="w-12 text-right text-muted-foreground text-xs shrink-0">👤 Human</span>
                         <div className="flex-grow">
                             <div className="w-full flex h-5 rounded-md overflow-hidden bg-muted">
-                                <button className="bg-red-500 hover:opacity-80 transition-opacity" style={{ width: `${yesPercent}%` }} title={`Yes: ${d.yes}`} onClick={() => onBarClick(d.label, 'yes', 'human')}></button>
-                                <button className="bg-green-500 hover:opacity-80 transition-opacity" style={{ width: `${noPercent}%` }} title={`No: ${d.no}`} onClick={() => onBarClick(d.label, 'no', 'human')}></button>
-                                <button className="bg-gray-400 hover:opacity-80 transition-opacity" style={{ width: `${unsurePercent}%` }} title={`Unsure: ${d.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'human')}></button>
+                                <button className="bg-destructive hover:opacity-80 transition-opacity" style={{ width: `${yesPercent}%` }} title={`Yes: ${d.yes}`} onClick={() => onBarClick(d.label, 'yes', 'human')}></button>
+                                <button className="bg-emerald-500 hover:opacity-80 transition-opacity" style={{ width: `${noPercent}%` }} title={`No: ${d.no}`} onClick={() => onBarClick(d.label, 'no', 'human')}></button>
+                                <button className="bg-slate-400 hover:opacity-80 transition-opacity" style={{ width: `${unsurePercent}%` }} title={`Unsure: ${d.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'human')}></button>
                             </div>
                             <div className="flex justify-between text-xs mt-1 text-muted-foreground">
                                 <span>{d.yes} Yes</span>
@@ -200,9 +200,9 @@ const StackedBarChart: React.FC<{
                                 {llmItem.total > 0 ? (
                                     <>
                                         <div className="w-full flex h-5 rounded-md overflow-hidden bg-muted">
-                                            <button className="bg-red-400 hover:bg-red-500 transition-colors" style={{ width: `${llmYesPercent}%` }} title={`Yes: ${llmItem.yes}`} onClick={() => onBarClick(d.label, 'yes', 'llm')}></button>
-                                            <button className="bg-green-400 hover:bg-green-500 transition-colors" style={{ width: `${llmNoPercent}%` }} title={`No: ${llmItem.no}`} onClick={() => onBarClick(d.label, 'no', 'llm')}></button>
-                                            <button className="bg-gray-300 hover:bg-gray-400 transition-colors" style={{ width: `${llmUnsurePercent}%` }} title={`Unsure: ${llmItem.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'llm')}></button>
+                                            <button className="bg-destructive/70 hover:bg-destructive/90 transition-colors" style={{ width: `${llmYesPercent}%` }} title={`Yes: ${llmItem.yes}`} onClick={() => onBarClick(d.label, 'yes', 'llm')}></button>
+                                            <button className="bg-emerald-400 hover:bg-emerald-500 transition-colors" style={{ width: `${llmNoPercent}%` }} title={`No: ${llmItem.no}`} onClick={() => onBarClick(d.label, 'no', 'llm')}></button>
+                                            <button className="bg-slate-300 hover:bg-slate-400 transition-colors" style={{ width: `${llmUnsurePercent}%` }} title={`Unsure: ${llmItem.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'llm')}></button>
                                         </div>
                                         <div className="flex justify-between text-xs mt-1 text-muted-foreground">
                                             <span>{llmItem.yes} Yes</span>
@@ -233,11 +233,10 @@ const MultiLanguageHeatmapCell: React.FC<{
 }> = ({ language, dimensionLabel, value, avgScoreA, avgScoreB, count, maxValue }) => {
     // Normalize value from 0 to 1 for color calculation
     const intensity = maxValue > 0 ? value / maxValue : 0;
-    // Interpolate hue from yellow (60) to red (0) for a bolder gradient
-    const hue = 60 - (intensity * 60);
-    // Use high saturation and vary lightness for impact
-    const saturation = 95;
-    const lightness = 80 - (intensity * 40); // from 80% (light yellow) down to 40% (dark red)
+    // Interpolate hue from yellow-green (80) to red (0) for a softer, more professional gradient
+    const hue = 50 - (intensity * 50); 
+    const saturation = 90;
+    const lightness = 88 - (intensity * 33); // from a very light pastel yellow to a softer red.
     const backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     // Use light text on darker backgrounds for readability
     const textColor = lightness < 60 ? 'var(--color-primary-foreground)' : 'var(--color-foreground)';
@@ -399,12 +398,12 @@ const CompactPerformanceChart: React.FC<{
                                     <p className="text-[11px] font-medium text-muted-foreground truncate mb-1" title={metric.title}>{metric.title.split('(')[0]}</p>
                                     {/* Bar for A (English) */}
                                     <div className="w-full bg-muted rounded h-3.5 relative group">
-                                        <div className="bg-sky-500 h-3.5 rounded" style={{ width: `${((metric.valueA ?? 0) / metric.maxValue) * 100}%` }}></div>
+                                        <div className="bg-primary h-3.5 rounded" style={{ width: `${((metric.valueA ?? 0) / metric.maxValue) * 100}%` }}></div>
                                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-[10px] px-1.5 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">{(metric.valueA ?? 0).toFixed(2)}{metric.unit}</div>
                                     </div>
                                     {/* Bar for B (Native) */}
                                     <div className="w-full bg-muted rounded h-3.5 relative group mt-1">
-                                        <div className="bg-teal-500 h-3.5 rounded" style={{ width: `${((metric.valueB ?? 0) / metric.maxValue) * 100}%` }}></div>
+                                        <div className="bg-indigo-500 h-3.5 rounded" style={{ width: `${((metric.valueB ?? 0) / metric.maxValue) * 100}%` }}></div>
                                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-[10px] px-1.5 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">{(metric.valueB ?? 0).toFixed(2)}{metric.unit}</div>
                                     </div>
                                 </div>
@@ -477,10 +476,10 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             totalEvaluations: totalEvals,
             uniqueScenarios: new Set(filteredEvaluations.map(e => e.scenarioId)).size,
             modelsTested: new Set(filteredEvaluations.map(e => e.model)).size,
-            avgTimeA: totalTimeA / totalEvals,
-            avgTimeB: totalTimeB / totalEvals,
-            avgWordsA: totalWordsA / totalEvals,
-            avgWordsB: totalWordsB / totalEvals,
+            avgTimeA: totalEvals > 0 ? totalTimeA / totalEvals : 0,
+            avgTimeB: totalEvals > 0 ? totalTimeB / totalEvals : 0,
+            avgWordsA: totalEvals > 0 ? totalWordsA / totalEvals : 0,
+            avgWordsB: totalEvals > 0 ? totalWordsB / totalEvals : 0,
             avgReasoningWordsA: withReasoningA.length > 0 ? withReasoningA.reduce((acc, curr) => acc + curr.reasoningWordCountA, 0) / withReasoningA.length : 0,
             avgReasoningWordsB: withReasoningB.length > 0 ? withReasoningB.reduce((acc, curr) => acc + curr.reasoningWordCountB, 0) / withReasoningB.length : 0,
             avgWordsPerSecondA: totalTimeA > 0 ? totalWordsA / totalTimeA : 0,
@@ -517,8 +516,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             labels,
             dimensions,
             datasets: [
-                { label: 'English', color: '#0284c7', values: avgScoresA }, // sky-600
-                { label: 'Native Language', color: '#14b8a6', values: avgScoresB }, // teal-500
+                { label: 'English', color: '#3b82f6', values: avgScoresA }, // blue-500
+                { label: 'Native Language', color: '#6366f1', values: avgScoresB }, // indigo-500
             ],
         };
     }, [filteredEvaluations]);
@@ -640,7 +639,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         const disparityAgreementData = DISPARITY_CRITERIA.map(crit => {
             let agreements = 0;
             completedEvals.forEach(ev => {
+// FIX: Changed `typeof humanScores.disparity` to `typeof ev.humanScores.disparity` to correctly reference the type within the current scope.
                 const humanVal = ev.humanScores.disparity[crit.key as keyof typeof ev.humanScores.disparity];
+// FIX: Changed `typeof llmScores.disparity` to `typeof ev.llmScores!.disparity` to correctly reference the type within the current scope.
                 const llmVal = ev.llmScores!.disparity[crit.key as keyof typeof ev.llmScores!.disparity];
                 if (humanVal === llmVal) agreements++;
             });
@@ -861,8 +862,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <DashboardCard title="Average Performance" subtitle="Comparing output metrics between English and native language responses.">
                              <div className="flex justify-end items-center gap-4 text-xs mb-4">
-                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-600 dark:bg-sky-500"></span><span>English</span></div>
-                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-teal-500 dark:bg-teal-400"></span><span>Native Language</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary"></span><span>English</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-500"></span><span>Native Language</span></div>
                             </div>
                             <BarChart data={[
                                 { label: 'Generation Time', valueA: metrics.avgTimeA, valueB: metrics.avgTimeB, unit: 's' },
@@ -923,7 +924,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             </div>
                             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                                 <span>Low Disparity (0)</span>
-                                <div className="w-32 h-4 rounded-md" style={{ background: 'linear-gradient(to right, hsl(60, 95%, 80%), hsl(35, 95%, 60%), hsl(10, 90%, 40%))' }}></div>
+                                <div className="w-32 h-4 rounded-md" style={{ background: 'linear-gradient(to right, hsl(50, 90%, 88%), hsl(25, 90%, 70%), hsl(0, 90%, 55%))' }}></div>
                                 <span>High Disparity (4)</span>
                             </div>
                         </DashboardCard>
@@ -980,8 +981,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                     <h4 className="font-semibold text-foreground text-center">Performance Metrics</h4>
                                     <p className="text-xs text-muted-foreground text-center -mt-2 mb-4">Compares average generation speed and output length, showing English vs. Native language results.</p>
                                     <div className="flex justify-center items-center gap-4 text-xs mb-4">
-                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500"></span><span>English (A)</span></div>
-                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-teal-500"></span><span>Native (B)</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary"></span><span>English (A)</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-500"></span><span>Native (B)</span></div>
                                     </div>
                                     <CompactPerformanceChart data={modelComparisonData.performanceData} />
                                 </div>
