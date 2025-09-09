@@ -1,11 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
+import LoadingSpinner from './LoadingSpinner';
 
 // --- HELPER COMPONENTS ---
 
-const DashboardCard: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; className?: string }> = ({ title, subtitle, children, className = '' }) => (
-    <div className={`bg-card text-card-foreground p-6 rounded-xl shadow-md border border-border ${className}`}>
+const DashboardCard: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; className?: string; id?: string }> = ({ title, subtitle, children, className = '', id }) => (
+    <div id={id} className={`bg-card text-card-foreground p-6 rounded-xl shadow-md border border-border ${className}`}>
         <div className="border-b border-border mb-4 pb-3">
              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
              {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
@@ -427,6 +430,61 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const [drilldownData, setDrilldownData] = useState<{ title: string; evaluations: ReasoningEvaluationRecord[] } | null>(null);
     const [selectedLanguagePair, setSelectedLanguagePair] = useState<string>('All');
     const [selectedModel, setSelectedModel] = useState<string>('All');
+    const [isCapturing, setIsCapturing] = useState<boolean>(false);
+    const dashboardRef = useRef<HTMLDivElement>(null);
+
+    const handleDownload = async (format: 'pdf' | 'jpeg') => {
+        if (!dashboardRef.current || isCapturing) return;
+
+        setIsCapturing(true);
+        const originalScrollX = window.scrollX;
+        const originalScrollY = window.scrollY;
+
+        try {
+            window.scrollTo(0, 0); // Scroll to top for full capture
+
+            const canvas = await html2canvas(dashboardRef.current, {
+                scale: 2, // Higher resolution
+                useCORS: true,
+                backgroundColor: document.documentElement.classList.contains('dark') ? '#0d1117' : '#F9FAFB',
+                ignoreElements: (element) => element.id === 'dashboard-filter-card',
+                windowWidth: dashboardRef.current.scrollWidth,
+                windowHeight: dashboardRef.current.scrollHeight,
+            });
+
+            const date = new Date().toISOString().split('T')[0];
+            const filename = `dashboard_export_${date}`;
+
+            if (format === 'jpeg') {
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                const link = document.createElement('a');
+                link.href = imgData;
+                link.download = `${filename}.jpeg`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else { // pdf
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                
+                const pdf = new jsPDF({
+                    orientation: imgWidth > imgHeight ? 'l' : 'p',
+                    unit: 'px',
+                    format: [imgWidth, imgHeight],
+                });
+
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                pdf.save(`${filename}.pdf`);
+            }
+        } catch (error) {
+            console.error("Failed to capture dashboard:", error);
+            alert("Sorry, there was an error creating the download file.");
+        } finally {
+            setIsCapturing(false);
+            window.scrollTo(originalScrollX, originalScrollY); // Restore scroll position
+        }
+    };
 
     const languagePairs = useMemo(() => {
         const pairs = new Set(evaluations.map(e => e.languagePair).filter(lang => lang && lang !== 'English - English'));
@@ -804,10 +862,10 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8" ref={dashboardRef}>
             {drilldownData && <DrilldownModal data={drilldownData} onClose={() => setDrilldownData(null)} />}
             
-            <DashboardCard title="Dashboard Filters" subtitle="Select a language pair or model to refine the data across all charts.">
+            <DashboardCard title="Dashboard Actions & Filters" subtitle="Select a language pair or model to refine the data across all charts." id="dashboard-filter-card">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="lang-pair-filter" className="text-sm font-medium text-foreground mb-1 block">Language Pair</label>
@@ -840,6 +898,26 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             })}
                         </select>
                     </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-3 mt-4 pt-4 border-t border-border">
+                    <button
+                        onClick={() => handleDownload('jpeg')}
+                        disabled={isCapturing}
+                        className="px-4 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 text-secondary-foreground bg-secondary hover:bg-muted disabled:opacity-50 disabled:cursor-wait"
+                        aria-label="Download dashboard as JPEG image"
+                    >
+                        {isCapturing ? <LoadingSpinner size="sm"/> : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-3.69l-2.6-2.6a.75.75 0 00-1.06 0l-2.6 2.6-1.72-1.72a.75.75 0 00-1.06 0l-5.69 5.69zM4.75 6a.75.75 0 01.75-.75h.008a.75.75 0 010 1.5H5.5A.75.75 0 014.75 6z" clipRule="evenodd" /></svg>}
+                        <span>{isCapturing ? 'Processing...' : 'Download as JPEG'}</span>
+                     </button>
+                     <button
+                        onClick={() => handleDownload('pdf')}
+                        disabled={isCapturing}
+                        className="px-4 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 text-secondary-foreground bg-secondary hover:bg-muted disabled:opacity-50 disabled:cursor-wait"
+                        aria-label="Download dashboard as PDF document"
+                     >
+                        {isCapturing ? <LoadingSpinner size="sm"/> : <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 002 4.25v11.5A2.25 2.25 0 004.25 18h11.5A2.25 2.25 0 0018 15.75V4.25A2.25 2.25 0 0015.75 2H4.25zM10.75 9.75a.75.75 0 00-1.5 0v2.546l-.305-.305a.75.75 0 00-1.06 1.06l1.75 1.75a.75.75 0 001.06 0l1.75-1.75a.75.75 0 10-1.06-1.06l-.305.305V9.75zM8.25 6a.75.75 0 01.75-.75h2a.75.75 0 010 1.5h-2a.75.75 0 01-.75-.75z" clipRule="evenodd" /></svg>}
+                        <span>{isCapturing ? 'Processing...' : 'Download as PDF'}</span>
+                     </button>
                 </div>
             </DashboardCard>
 
