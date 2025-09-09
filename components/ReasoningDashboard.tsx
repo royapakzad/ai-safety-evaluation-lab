@@ -59,10 +59,10 @@ const RadarChart: React.FC<{
 }> = ({ data, onLabelClick }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
 
-    const size = 400; // Increased size to prevent label cutoff
+    const size = 500; // Increased size for better visibility
     const center = size / 2;
     const numLevels = 5;
-    const radius = center * 0.55; // Reduced radius to give labels more space
+    const radius = center * 0.6; // Adjusted radius for the new size
     const levelDistance = radius / numLevels;
     const numAxes = data.labels.length;
 
@@ -118,15 +118,15 @@ const RadarChart: React.FC<{
                 {/* Labels */}
                 {data.labels.map((label, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
-                    const labelRadius = radius + 30; // Position labels with enough margin
+                    const labelRadius = radius + 50; // Increased distance for labels
                     const x = center + labelRadius * Math.cos(angle);
                     const y = center + labelRadius * Math.sin(angle);
                     
                     const lines = label.split(' & ');
-                    const yOffset = -(lines.length - 1) * 6; // Adjust Y for multi-line text
+                    const yOffset = -(lines.length - 1) * 8; // Adjust Y for multi-line text with larger font
 
                     return (
-                        <text key={label} x={x} y={y + yOffset} textAnchor="middle" dominantBaseline="central" fontSize="12" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
+                        <text key={label} x={x} y={y + yOffset} textAnchor="middle" dominantBaseline="central" fontSize="14" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
                            {lines.map((line, index) => (
                                <tspan key={index} x={x} dy={index > 0 ? '1.2em' : '0'}>{line}</tspan>
                            ))}
