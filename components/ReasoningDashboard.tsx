@@ -314,6 +314,59 @@ const getShortLabel = (longLabel: string): string => {
 };
 
 
+const MODEL_COLORS: { [key: string]: string } = {
+    'gemini/gemini-2.5-flash': '#4285F4',
+    'openai/gpt-4o': '#10a37f',
+    'mistral/mistral-small-latest': '#ff7755',
+    'default': '#5f6368',
+};
+
+const GroupedBarChart: React.FC<{
+    data: { label: string; values: { [modelId: string]: number } }[];
+    modelColors: { [modelId: string]: string };
+    maxValue?: number;
+    unit?: string;
+}> = ({ data, modelColors, maxValue = 5, unit = '' }) => {
+    const models = data.length > 0 ? Object.keys(data[0].values).sort() : [];
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs">
+                {models.map(modelId => (
+                    <div key={modelId} className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: modelColors[modelId] || modelColors.default }}></span>
+                        <span>{AVAILABLE_MODELS.find(m => m.id === modelId)?.name || modelId}</span>
+                    </div>
+                ))}
+            </div>
+            <div className="space-y-3 text-sm">
+                {data.map(({ label, values }) => (
+                    <div key={label}>
+                        <p className="font-medium text-foreground mb-1.5">{label}</p>
+                        <div className="space-y-1">
+                            {models.map(modelId => {
+                                const value = values[modelId] ?? 0;
+                                const widthPercent = (value / maxValue) * 100;
+                                const color = modelColors[modelId] || modelColors.default;
+                                return (
+                                    <div key={modelId} className="flex items-center gap-2 group">
+                                        <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: color }}></div>
+                                        <div className="flex-grow bg-muted rounded-full h-5 relative">
+                                            <div className="h-5 rounded-full transition-all duration-300" style={{ width: `${widthPercent}%`, backgroundColor: color }}></div>
+                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white font-bold text-xs transition-opacity duration-200 opacity-0 group-hover:opacity-100">{value.toFixed(2)}{unit}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 // --- MAIN COMPONENT ---
 
 interface ReasoningDashboardProps {
@@ -532,7 +585,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             let agreements = 0;
             completedEvals.forEach(ev => {
                 const humanVal = ev.humanScores.disparity[crit.key as keyof typeof ev.humanScores.disparity];
-                // FIX: `llmScores` is not a variable, it's a property of `ev`. Changed `typeof llmScores.disparity` to `typeof ev.llmScores!.disparity`.
                 const llmVal = ev.llmScores!.disparity[crit.key as keyof typeof ev.llmScores!.disparity];
                 if (humanVal === llmVal) agreements++;
             });
@@ -543,6 +595,70 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             singleResponse: agreementData,
             disparity: disparityAgreementData,
             evalCount: completedEvals.length
+        };
+    }, [filteredEvaluations]);
+
+    const modelComparisonData = useMemo(() => {
+        const modelsInView = Array.from(new Set(filteredEvaluations.map(e => e.model)));
+        if (modelsInView.length < 2) return null;
+
+        const dataByModel = new Map<string, ReasoningEvaluationRecord[]>();
+        modelsInView.forEach(model => dataByModel.set(model, []));
+
+        filteredEvaluations.forEach(ev => {
+            if (dataByModel.has(ev.model)) {
+                dataByModel.get(ev.model)!.push(ev);
+            }
+        });
+
+        const results: { [modelId: string]: { count: number; avgScores: { [key: string]: number }; disparityPercentages: { [key: string]: number } } } = {};
+        const dimensionKeys = RUBRIC_DIMENSIONS.map(d => d.key);
+        const disparityKeys = DISPARITY_CRITERIA.map(c => c.key);
+
+        dataByModel.forEach((evals, model) => {
+            const count = evals.length;
+            if (count === 0) return;
+
+            const scoreSums = Object.fromEntries(dimensionKeys.map(k => [k, 0]));
+            evals.forEach(ev => {
+                dimensionKeys.forEach(key => {
+                    const scoreA = getNumericScore(key as any, ev.humanScores.english);
+                    const scoreB = getNumericScore(key as any, ev.humanScores.native);
+                    scoreSums[key] += (scoreA + scoreB) / 2; // Average score across both languages for overall quality
+                });
+            });
+            const avgScores = Object.fromEntries(dimensionKeys.map(k => [k, scoreSums[k] / count]));
+            
+            const disparityCounts = Object.fromEntries(disparityKeys.map(k => [k, 0]));
+            evals.forEach(ev => {
+                disparityKeys.forEach(key => {
+                    if (ev.humanScores.disparity[key as keyof typeof ev.humanScores.disparity] === 'yes') {
+                        disparityCounts[key]++;
+                    }
+                });
+            });
+            const disparityPercentages = Object.fromEntries(disparityKeys.map(k => [k, (disparityCounts[k] / count) * 100]));
+
+            results[model] = {
+                count,
+                avgScores,
+                disparityPercentages
+            };
+        });
+
+        const qualityScoresForChart = RUBRIC_DIMENSIONS.map(dim => ({
+            label: getShortLabel(dim.label),
+            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.avgScores[dim.key] ?? 0]))
+        }));
+
+        const disparityScoresForChart = DISPARITY_CRITERIA.map(crit => ({
+            label: crit.label.replace('Disparity in ', ''),
+            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.disparityPercentages[crit.key] ?? 0]))
+        }));
+
+        return {
+            qualityScores: qualityScoresForChart,
+            disparityScores: disparityScoresForChart,
         };
     }, [filteredEvaluations]);
 
@@ -727,6 +843,32 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                 </div>
                             </div>
                          </DashboardCard>
+                    )}
+
+                    {modelComparisonData && (
+                        <DashboardCard title="Model Comparison" subtitle="Comparing performance and quality across all tested models in the current view.">
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                                <div>
+                                    <h4 className="font-semibold text-foreground mb-4 text-center">Model Quality (Avg. Human Scores)</h4>
+                                    <p className="text-xs text-muted-foreground text-center mb-4">Compares the average human score (1-5, higher is better) for each quality dimension across models.</p>
+                                    <GroupedBarChart
+                                        data={modelComparisonData.qualityScores}
+                                        modelColors={MODEL_COLORS}
+                                        maxValue={5}
+                                    />
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-foreground mb-4 text-center">Disparity Flags (% of 'Yes' responses)</h4>
+                                     <p className="text-xs text-muted-foreground text-center mb-4">Shows the percentage of evaluations where humans flagged a disparity for each model (lower is better).</p>
+                                    <GroupedBarChart
+                                        data={modelComparisonData.disparityScores}
+                                        modelColors={MODEL_COLORS}
+                                        maxValue={100}
+                                        unit="%"
+                                    />
+                                </div>
+                            </div>
+                        </DashboardCard>
                     )}
                 </>
             )}
