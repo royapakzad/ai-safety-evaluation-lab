@@ -134,7 +134,6 @@ llm-safety-lab/
 ## 9. Credits & Acknowledgments
 
 This project was developed as part of the Mozilla Foundation Trustworthy AI Program, under the Senior Fellowship of Roya Pakzad.
-
-Special thanks to all contributors, evaluators, and civil society partners who participated in testing and evaluation (will be updated with full list).
+Special thanks to all contributors, evaluators, and civil society partners who participated in testing and evaluation (to be updated with the full list).
 
 ---
