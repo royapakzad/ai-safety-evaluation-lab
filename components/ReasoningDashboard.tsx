@@ -305,9 +305,9 @@ const getShortLabel = (longLabel: string): string => {
     const labelMap: { [key: string]: string } = {
         'Actionability and Practicality': 'Actionability & Practicality',
         'Factuality': 'Factuality',
-        'Safety, Security, and Privacy': 'Security & Privacy',
-        'Tone, Dignity, and Empathy': 'Tone & Empathy',
-        'Non-Discrimination & Fairness': 'Non-Discrimination & Fairness',
+        'Safety, Security, and Privacy': 'Safety, Security & Privacy',
+        'Tone, Dignity, and Empathy': 'Tone, Dignity & Empathy',
+        'Non-Discrimination & Fairness': 'Fairness & Bias',
         'Freedom of Access to Information, Censorship and Refusal': 'Censorship & Refusal',
     };
     return labelMap[longLabel] || longLabel;
@@ -955,7 +955,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
                     {modelComparisonData && (
                         <DashboardCard title="Model Comparison" subtitle="Comparing performance and quality across all tested models in the current view.">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div>
                                     <h4 className="font-semibold text-foreground mb-4 text-center">Model Quality (Avg. Human Scores)</h4>
                                     <p className="text-xs text-muted-foreground text-center mb-4">Compares the average human score (1-5, higher is better) for each quality dimension across models.</p>
@@ -975,10 +975,10 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                         unit="%"
                                     />
                                 </div>
-                                <div>
+                                <div className="lg:col-span-2">
                                     <h4 className="font-semibold text-foreground text-center">Performance Metrics</h4>
                                     <p className="text-xs text-muted-foreground text-center -mt-2 mb-4">Compares average generation speed and output length, showing English vs. Native language results.</p>
-                                    <div className="flex justify-center items-center gap-4 text-xs">
+                                    <div className="flex justify-center items-center gap-4 text-xs mb-4">
                                         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500"></span><span>English (A)</span></div>
                                         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-teal-500"></span><span>Native (B)</span></div>
                                     </div>
