@@ -34,19 +34,7 @@ Evaluations use a rubric derived from the **[UN B-Tech Project’s GenAI taxonom
 The platform supports research into the scalability and reliability of AI evaluation itself. By comparing human scores to those of a Gemini-powered “LLM Judge,” the lab explores whether automated evaluation systems can capture nuanced, language-specific failures—an essential step toward building globally relevant evaluation standards.
 
 ### D. Interactive Dashboard (Multilingual Disparity & Model Analytics)
-An interactive, filterable dashboard provides a high-level and drill-down view of evaluation results:
-
-- **Global Filters:** Narrow all charts by **language pair** and **model**.
-- **Average Performance (Bar Charts):** Side-by-side comparison of **generation time**, **answer word count**, **words per second**, and **reasoning length** for **English vs. native language** outputs.
-- **Harm Assessment (Radar Chart):** Average **human scores ** across rubric dimensions (e.g., **Actionability & Practicality, Factuality, Security & Privacy, Tone & Empathy, Non-Discrimination & Fairness, Censorship & Refusal**).  
-- **Multilingual Disparity Heatmap:** For each non-English language and rubric dimension, shows the **average disparity** 
-- **Disparity Analysis (Human vs. LLM Judge):** Stacked bars for each disparity criterion indicating **Yes / No / Unsure** proportions from **human raters** and, when available, the **LLM judge**.  
-- **Human–LLM Agreement Rates:** 
-- **Model Comparison:** Cross-model comparisons for:
-  - **Quality** 
-  - **Disparity flags** 
-  - **Performance** (avg generation time, output length, words/sec).
-
+An interactive, filterable dashboard provides both high-level and detailed views of evaluation results. Users can refine data by language pair and model, then explore comparisons of English vs. native language outputs across performance metrics (generation time, word counts, reasoning length), rubric-based human scores (via radar charts), and multilingual disparities (heatmaps). It also visualizes human vs. LLM judge assessments through stacked bars, highlights agreement rates, and enables cross-model comparisons of quality, disparity flags, and performance.
 ---
 
 ## 3. Benefits: Why Multilingual Evaluation Matters for Responsible AI
