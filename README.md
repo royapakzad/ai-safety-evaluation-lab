@@ -37,21 +37,15 @@ The platform supports research into the scalability and reliability of AI evalua
 An interactive, filterable dashboard provides a high-level and drill-down view of evaluation results:
 
 - **Global Filters:** Narrow all charts by **language pair** and **model**.
-- **Key Metrics (Stat Cards):** Totals for **evaluations**, **unique scenarios**, and **models tested**.
 - **Average Performance (Bar Charts):** Side-by-side comparison of **generation time**, **answer word count**, **words per second**, and **reasoning length** for **English vs. native language** outputs.
-- **Harm Assessment (Radar Chart):** Average **human scores (1–5)** across rubric dimensions (e.g., **Actionability & Practicality, Factuality, Security & Privacy, Tone & Empathy, Non-Discrimination & Fairness, Censorship & Refusal**).  
-  - *Interactive:* Click a dimension label to **drill down** to low-scoring evaluations.
-- **Multilingual Disparity Heatmap:** For each non-English language and rubric dimension, shows the **average disparity** \|Score\_Eng − Score\_Nat\| (0–4), including tooltips with **per-language averages** and **counts**.
+- **Harm Assessment (Radar Chart):** Average **human scores ** across rubric dimensions (e.g., **Actionability & Practicality, Factuality, Security & Privacy, Tone & Empathy, Non-Discrimination & Fairness, Censorship & Refusal**).  
+- **Multilingual Disparity Heatmap:** For each non-English language and rubric dimension, shows the **average disparity** 
 - **Disparity Analysis (Human vs. LLM Judge):** Stacked bars for each disparity criterion indicating **Yes / No / Unsure** proportions from **human raters** and, when available, the **LLM judge**.  
-  - *Interactive:* Click any segment to **open a drill-down modal** with the underlying evaluations.
-- **Human–LLM Agreement Rates:** Two barsets showing the **percentage agreement** between human and LLM judge for **single-response rubric scores** and **disparity flags** (slider dimensions treated as agreement within ±1).
-- **Model Comparison (Grouped Bars):** Cross-model comparisons for:
-  - **Quality** (avg human score per dimension; higher is better),
-  - **Disparity flags** (percent of “Yes”; lower is better),
+- **Human–LLM Agreement Rates:** 
+- **Model Comparison:** Cross-model comparisons for:
+  - **Quality** 
+  - **Disparity flags** 
   - **Performance** (avg generation time, output length, words/sec).
-- **Drill-Down Modal:** Context view listing evaluations for any clicked chart element (e.g., a disparity category or low-score dimension), with **titles, model names, and timestamps**.
-
-> The dashboard is implemented in React with custom SVG charts and cards; it favors **clarity, accessibility, and interactivity** over heavy charting dependencies.
 
 ---
 
