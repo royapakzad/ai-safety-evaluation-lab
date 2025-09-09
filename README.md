@@ -1,8 +1,7 @@
 
 # Multilingual AI Safety Evaluation Laboratory
 
-## 👉 Web Platform for Evaluators  
-[Multilingual LLM Safety Evaluation Lab](https://ai-safety-evaluation-lab.vercel.app/)
+### 👉 Web Platform for Evaluators  [Multilingual LLM Safety Evaluation Lab](https://ai-safety-evaluation-lab.vercel.app/)
 
 ---
 
