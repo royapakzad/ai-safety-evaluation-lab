@@ -611,7 +611,16 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             }
         });
 
-        const results: { [modelId: string]: { count: number; avgScores: { [key: string]: number }; disparityPercentages: { [key: string]: number } } } = {};
+        const results: { 
+            [modelId: string]: { 
+                count: number; 
+                avgScores: { [key: string]: number }; 
+                disparityPercentages: { [key: string]: number };
+                avgGenTime: number;
+                avgAnswerWords: number;
+                avgWps: number;
+            } 
+        } = {};
         const dimensionKeys = RUBRIC_DIMENSIONS.map(d => d.key);
         const disparityKeys = DISPARITY_CRITERIA.map(c => c.key);
 
@@ -619,16 +628,18 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             const count = evals.length;
             if (count === 0) return;
 
+            // Quality Scores
             const scoreSums = Object.fromEntries(dimensionKeys.map(k => [k, 0]));
             evals.forEach(ev => {
                 dimensionKeys.forEach(key => {
                     const scoreA = getNumericScore(key as any, ev.humanScores.english);
                     const scoreB = getNumericScore(key as any, ev.humanScores.native);
-                    scoreSums[key] += (scoreA + scoreB) / 2; // Average score across both languages for overall quality
+                    scoreSums[key] += (scoreA + scoreB) / 2;
                 });
             });
             const avgScores = Object.fromEntries(dimensionKeys.map(k => [k, scoreSums[k] / count]));
             
+            // Disparity Scores
             const disparityCounts = Object.fromEntries(disparityKeys.map(k => [k, 0]));
             evals.forEach(ev => {
                 disparityKeys.forEach(key => {
@@ -638,11 +649,23 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 });
             });
             const disparityPercentages = Object.fromEntries(disparityKeys.map(k => [k, (disparityCounts[k] / count) * 100]));
-
+            
+            // Performance Metrics
+            const perfMetrics = { totalGenTime: 0, totalAnswerWords: 0, totalWps: 0, count: 0 };
+            evals.forEach(ev => {
+                perfMetrics.totalGenTime += (ev.generationTimeSecondsA ?? 0) + (ev.generationTimeSecondsB ?? 0);
+                perfMetrics.totalAnswerWords += (ev.answerWordCountA ?? 0) + (ev.answerWordCountB ?? 0);
+                perfMetrics.totalWps += (ev.wordsPerSecondA ?? 0) + (ev.wordsPerSecondB ?? 0);
+                perfMetrics.count += 2; // for 2 responses per eval
+            });
+            
             results[model] = {
                 count,
                 avgScores,
-                disparityPercentages
+                disparityPercentages,
+                avgGenTime: perfMetrics.count > 0 ? perfMetrics.totalGenTime / perfMetrics.count : 0,
+                avgAnswerWords: perfMetrics.count > 0 ? perfMetrics.totalAnswerWords / perfMetrics.count : 0,
+                avgWps: perfMetrics.count > 0 ? perfMetrics.totalWps / perfMetrics.count : 0,
             };
         });
 
@@ -655,10 +678,35 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             label: crit.label.replace('Disparity in ', ''),
             values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.disparityPercentages[crit.key] ?? 0]))
         }));
+        
+        const performanceScoresForChart = {
+            time: [{
+                label: 'Avg. Generation Time (s)',
+                values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.avgGenTime ?? 0]))
+            }],
+            words: [{
+                label: 'Avg. Answer Words',
+                values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.avgAnswerWords ?? 0]))
+            }],
+            wps: [{
+                label: 'Avg. Words per Second',
+                values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.avgWps ?? 0]))
+            }]
+        };
+        
+        const maxGenTime = Math.max(...modelsInView.map(m => results[m]?.avgGenTime ?? 0));
+        const maxAnswerWords = Math.max(...modelsInView.map(m => results[m]?.avgAnswerWords ?? 0));
+        const maxWps = Math.max(...modelsInView.map(m => results[m]?.avgWps ?? 0));
 
         return {
             qualityScores: qualityScoresForChart,
             disparityScores: disparityScoresForChart,
+            performanceScores: performanceScoresForChart,
+            maxValues: {
+                genTime: maxGenTime,
+                answerWords: maxAnswerWords,
+                wps: maxWps,
+            }
         };
     }, [filteredEvaluations]);
 
@@ -847,7 +895,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
                     {modelComparisonData && (
                         <DashboardCard title="Model Comparison" subtitle="Comparing performance and quality across all tested models in the current view.">
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
                                 <div>
                                     <h4 className="font-semibold text-foreground mb-4 text-center">Model Quality (Avg. Human Scores)</h4>
                                     <p className="text-xs text-muted-foreground text-center mb-4">Compares the average human score (1-5, higher is better) for each quality dimension across models.</p>
@@ -865,6 +913,28 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                         modelColors={MODEL_COLORS}
                                         maxValue={100}
                                         unit="%"
+                                    />
+                                </div>
+                                <div className="space-y-6">
+                                    <h4 className="font-semibold text-foreground text-center">Performance Metrics</h4>
+                                    <p className="text-xs text-muted-foreground text-center -mt-2 mb-4">Compares average generation speed and output length.</p>
+                                    
+                                    <GroupedBarChart
+                                        data={modelComparisonData.performanceScores.time}
+                                        modelColors={MODEL_COLORS}
+                                        maxValue={modelComparisonData.maxValues.genTime * 1.1 || 1}
+                                        unit="s"
+                                    />
+                                    <GroupedBarChart
+                                        data={modelComparisonData.performanceScores.words}
+                                        modelColors={MODEL_COLORS}
+                                        maxValue={modelComparisonData.maxValues.answerWords * 1.1 || 1}
+                                    />
+                                    <GroupedBarChart
+                                        data={modelComparisonData.performanceScores.wps}
+                                        modelColors={MODEL_COLORS}
+                                        maxValue={modelComparisonData.maxValues.wps * 1.1 || 1}
+                                        unit=" w/s"
                                     />
                                 </div>
                             </div>
