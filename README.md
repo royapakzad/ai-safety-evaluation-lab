@@ -1,6 +1,10 @@
 
 # Multilingual AI Safety Evaluation Laboratory
-## 👉 Web Platform for Evaluators: [Multilingual LLM Safety Evaluation Lab](https://ai-safety-evaluation-lab.vercel.app/)
+
+## 👉 Web Platform for Evaluators  
+[Multilingual LLM Safety Evaluation Lab](https://ai-safety-evaluation-lab.vercel.app/)
+
+---
 
 ## 1. Introduction: The Importance of Multilingual Evaluation
 
@@ -10,83 +14,104 @@ While most LLM development and testing is English-centric, the majority of the w
 
 This lab's primary purpose is to empower researchers, developers, and policymakers to rigorously assess **how model performance, safety, and alignment change across different languages**. It provides the tools to move beyond assumptions and gather concrete evidence, ensuring that AI systems are developed and deployed in a way that is equitable, fair, and safe for global, multilingual populations.
 
+---
+
 ## 2. Core Capabilities
 
 The platform is built around a comparison lab and a meta-evaluation system, all designed with a multilingual focus.
 
-#### A. Systematic Multilingual Evaluation
-This is the lab's core function. It facilitates the **direct comparison** of an LLM's response to an English prompt versus its response to the same prompt translated into one of dozens of supported languages. This allows for precise measurement of:
-*   **Performance Degradation:** Does the quality, accuracy, or coherence of the answer decrease in the target language?
-*   **Logical Inconsistencies:** Does the model contradict itself or show a flawed reasoning process in one language but not the other?
-*   **Safety Guardrail Failure:** Are safety filters weaker or more easily bypassed in non-English interactions?
+### A. Systematic Multilingual Evaluation
+The lab’s core function enables **direct comparison** of an LLM’s response to an English prompt versus its response to the same prompt translated into one of dozens of supported languages. This allows precise measurement of:
 
-#### B. Human Rights-Based Evaluation Rubric
-All evaluations are conducted using a rubric derived from the **[UN B-Tech Project's GenAI taxonomy of harm](https://www.ohchr.org/en/documents/tools-and-resources/taxonomy-generative-ai-human-rights-harms-b-tech-gen-ai-project)**. This is not a generic quality assessment; it is a specialized framework designed to measure the human rights impact of AI-generated content, a methodology that is crucial for assessing harms that may disproportionately affect vulnerable, non-English-speaking communities.
+- **Performance Degradation:** Does the quality, accuracy, or coherence of the answer decrease in the target language?  
+- **Logical Inconsistencies:** Does the model contradict itself or show flawed reasoning in one language but not the other?  
+- **Safety Guardrail Failure:** Are safety filters weaker or more easily bypassed in non-English interactions?  
 
-#### C. "LLM as a Judge" Meta-Evaluation
-This feature allows for research into the scalability and reliability of AI evaluation itself. By comparing a human's scores to those of a Gemini-powered "LLM Judge," we can study how well automated systems capture nuanced, language-specific failures, a key challenge in creating globally relevant evaluation standards.
+### B. Human Rights-Based Evaluation Rubric
+Evaluations use a rubric derived from the **[UN B-Tech Project’s GenAI taxonomy of harm](https://www.ohchr.org/en/documents/tools-and-resources/taxonomy-generative-ai-human-rights-harms-b-tech-gen-ai-project)**. This specialized framework is designed to measure the human rights impact of AI-generated content, making it particularly relevant for vulnerable, non-English-speaking communities.
+
+### C. "LLM as a Judge" Meta-Evaluation
+The platform supports research into the scalability and reliability of AI evaluation itself. By comparing human scores to those of a Gemini-powered “LLM Judge,” the lab explores whether automated evaluation systems can capture nuanced, language-specific failures—an essential step toward building globally relevant evaluation standards.
+
+### D. Interactive Dashboard (Multilingual Disparity & Model Analytics)
+An interactive, filterable dashboard provides a high-level and drill-down view of evaluation results:
+
+- **Global Filters:** Narrow all charts by **language pair** and **model**.
+- **Key Metrics (Stat Cards):** Totals for **evaluations**, **unique scenarios**, and **models tested**.
+- **Average Performance (Bar Charts):** Side-by-side comparison of **generation time**, **answer word count**, **words per second**, and **reasoning length** for **English vs. native language** outputs.
+- **Harm Assessment (Radar Chart):** Average **human scores (1–5)** across rubric dimensions (e.g., **Actionability & Practicality, Factuality, Security & Privacy, Tone & Empathy, Non-Discrimination & Fairness, Censorship & Refusal**).  
+  - *Interactive:* Click a dimension label to **drill down** to low-scoring evaluations.
+- **Multilingual Disparity Heatmap:** For each non-English language and rubric dimension, shows the **average disparity** \|Score\_Eng − Score\_Nat\| (0–4), including tooltips with **per-language averages** and **counts**.
+- **Disparity Analysis (Human vs. LLM Judge):** Stacked bars for each disparity criterion indicating **Yes / No / Unsure** proportions from **human raters** and, when available, the **LLM judge**.  
+  - *Interactive:* Click any segment to **open a drill-down modal** with the underlying evaluations.
+- **Human–LLM Agreement Rates:** Two barsets showing the **percentage agreement** between human and LLM judge for **single-response rubric scores** and **disparity flags** (slider dimensions treated as agreement within ±1).
+- **Model Comparison (Grouped Bars):** Cross-model comparisons for:
+  - **Quality** (avg human score per dimension; higher is better),
+  - **Disparity flags** (percent of “Yes”; lower is better),
+  - **Performance** (avg generation time, output length, words/sec).
+- **Drill-Down Modal:** Context view listing evaluations for any clicked chart element (e.g., a disparity category or low-score dimension), with **titles, model names, and timestamps**.
+
+> The dashboard is implemented in React with custom SVG charts and cards; it favors **clarity, accessibility, and interactivity** over heavy charting dependencies.
+
+---
 
 ## 3. Benefits: Why Multilingual Evaluation Matters for Responsible AI
 
-This lab is an important tool for any organization committed to the safe and ethical deployment of AI, particularly for public-facing bodies like government agencies and intrenational organizations such as UN.
+This lab is an essential tool for organizations committed to safe and ethical AI deployment, especially governments and international organizations such as the UN.
 
-*   **Exposing Language-Based Disparities & Harms:** Most safety benchmarks are heavily English-centric. This lab provides the tools to uncover risks that only manifest in other languages. Are safety guardrails weaker? Is the model more likely to produce misinformation or biased content in Spanish, Urdu, or Swahili? Answering these questions is fundamental to deploying AI responsibly in a global context.
-*   **Ensuring Global Equity:** Public services and information access must be equitable for all. This tool allows for the direct assessment of an LLM's utility and safety for minority language speakers, preventing the rollout of systems that are inadvertently discriminatory.
-*   **Evidence for Governance & Procurement:** It provides concrete, qualitative data that goes beyond marketing claims. By providing clear evidence of a model's multilingual capabilities (or lack thereof), agencies can make informed procurement decisions that serve their *entire* constituency, not just English speakers.
-*   **Developing Better, Safer Models:** By identifying *why* a model fails in specific languages, developers can create better fine-tuning strategies, more robust safety systems, and interaction protocols that are safer for a global user base.
+- **Exposing Language-Based Disparities & Harms:** Uncover risks that only manifest in other languages, such as weaker safety guardrails or higher rates of misinformation.  
+- **Ensuring Global Equity:** Assess an LLM’s utility and safety for minority language speakers, helping prevent inadvertent discrimination.  
+- **Evidence for Governance & Procurement:** Provide concrete data that supports informed procurement decisions, ensuring models serve *all* constituents.  
+- **Developing Better, Safer Models:** Identify *why* a model fails in specific languages to guide fine-tuning, safety systems, and culturally sensitive interaction protocols.  
+
+---
 
 ## 4. Future Development Roadmap
 
-This platform is under development. Key areas for future expansion include:
-
 ### Model-Centric Enhancements
-*   **Agentic System Evaluation:** Introducing simulations of multi-turn, task-oriented workflows to evaluate the safety and alignment of AI agents over extended interactions in different languages.
-*   **Structured Red Teaming Integration:** Incorporating modules that allow evaluators to use structured, adversarial prompts to proactively probe for vulnerabilities and "jailbreaks," with a focus on exploits that are language-specific.
-*   **Multi-modal Evaluation:** Expanding the framework to assess the safety and alignment of models that generate images, audio, and video content based on multilingual prompts.
-*   **Enhanced Analytics & Longitudinal Tracking:** Building more sophisticated dashboard visualizations to track model performance and safety drift over time, specifically comparing language-based cohorts.
-*   **Advanced Internationalization & Localization Testing:** Moving beyond direct translation to evaluate a model's understanding of contexts, cultural nuance, regional dialects, and localized content appropriateness.
-
+- **Agentic System Evaluation:** Multi-turn, task-oriented safety testing.  
+- **Structured Red Teaming Integration:** Adversarial prompt modules for language-specific vulnerabilities.  
+- **Multi-modal Evaluation:** Assess models across images, audio, and video generation.  
+- **Enhanced Analytics & Tracking:** Dashboards to monitor multilingual safety drift over time.  
+- **Advanced Internationalization & Localization:** Evaluate contextual nuance, dialects, and cultural appropriateness.  
 
 ### Socio-Technical & Governance Evaluation
-*   **Corporate Policy Gap Analysis:** Integrating frameworks to assess non-content factors, such as analyzing the policy development and implementation gap between a company's stated AI principles and its models' real-world performance.
-*   **Market Access & Accessibility Analysis:** Adding modules to evaluate the implications of model deployment on market access and the equitable availability of services for diverse communities.
-*   **Contextual Vulnerability Assessment:** Incorporating tools for comprehensive stakeholder mapping and the assessment of country-specific vulnerability factors to provide a holistic view of potential societal impacts.
+- **Corporate Policy Gap Analysis:** Compare companies’ stated AI principles against real-world performance.  
+- **Market Access & Accessibility:** Assess equitable availability of AI-powered services.  
+- **Contextual Vulnerability Assessment:** Map stakeholder risks and country-specific vulnerabilities for holistic societal impact analysis.  
+
+---
 
 ## 5. Access Control & Login
 
-The application features a two-level access system:
+The platform features two levels of access:
 
-*   **Admin Access:**
-    *   **Permissions:** Admins can view all evaluations submitted by all users and download a complete CSV of all data from the platform.
-    *   **Login:** Please contact the project administrator for admin credentials.
+- **Admin Access**  
+  - Permissions: View all evaluations, download complete datasets.  
+  - Login: Contact the project administrator for credentials.  
 
-*   **Evaluator Access:**
-    *   **Username:** Your email address (e.g., `user@example.com`)
-    *   **Password:** Your email address (the same as your username)
-    *   **Permissions:** Evaluators can conduct experiments, submit evaluations, view only their own past evaluations, and download a CSV of their own data.
+- **Evaluator Access**  
+  - Username: Your email address  
+  - Password: Your email address (default, same as username)  
+  - Permissions: Conduct experiments, view and download only your own evaluations.  
 
-## 6. API Key Configuration (Crucial!)
+---
 
-This application requires API keys for Google Gemini, OpenAI, and Mistral models to function fully (more models to be added).
+## 6. API Key Configuration
 
-**For Local Development (Recommended):**
+This application requires API keys for **Google Gemini**, **OpenAI**, and **Mistral** models.  
 
-1.  **Create `env.js` file:** In the root directory of the project, create a file named `env.js`.
-2.  **Add your API keys to `env.js`:**
-    ```javascript
-    // IMPORTANT: DO NOT COMMIT THIS FILE TO VERSION CONTROL IF IT CONTAINS REAL API KEYS!
-    // This file is for local development configuration only.
+**Local Setup Instructions:**
 
-    // For Google Gemini
-    export const API_KEY = "YOUR_GOOGLE_GEMINI_API_KEY_HERE";
-    
-    // For OpenAI
-    export const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE";
+1. Create an `env.js` file in the project root.  
+2. Add your API keys:  
 
-    // For Mistral
-    export const MISTRAL_API_KEY = "YOUR_MISTRAL_API_KEY_HERE";
-    ```
-    Replace the placeholder strings with your actual API keys.
+   ```javascript
+   // env.js (do not commit this file!)
+   export const API_KEY = "YOUR_GOOGLE_GEMINI_API_KEY_HERE";
+   export const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE";
+   export const MISTRAL_API_KEY = "YOUR_MISTRAL_API_KEY_HERE";
+
 3.  **Security:**
     *   **DO NOT COMMIT `env.js`** to Git or any version control system.
     *   Add `env.js` to your `.gitignore` file: `echo "env.js" >> .gitignore`
