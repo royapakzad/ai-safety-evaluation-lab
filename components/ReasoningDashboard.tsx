@@ -39,13 +39,13 @@ const BarChart: React.FC<{ data: { label: string; valueA: number; valueB: number
                         <div className="flex justify-between items-center mb-1 text-muted-foreground">
                             <span className="font-medium text-foreground">{label}</span>
                             <div className="flex gap-4 font-mono">
-                                <span className="text-primary">{valueA.toFixed(2)}{unit}</span>
-                                <span className="text-indigo-500 dark:text-indigo-400">{valueB.toFixed(2)}{unit}</span>
+                                <span className="text-blue-500">{valueA.toFixed(2)}{unit}</span>
+                                <span className="text-violet-400">{valueB.toFixed(2)}{unit}</span>
                             </div>
                         </div>
                         <div className="w-full bg-muted rounded-full h-4 flex overflow-hidden">
-                            <div className="bg-primary h-full" style={{ width: `${percentA}%` }}></div>
-                            <div className="bg-indigo-500 dark:bg-indigo-400 h-full" style={{ width: `${100-percentA}%` }}></div>
+                            <div className="bg-blue-500 h-full" style={{ width: `${percentA}%` }}></div>
+                            <div className="bg-violet-400 h-full" style={{ width: `${100-percentA}%` }}></div>
                         </div>
                     </div>
                 )
@@ -398,12 +398,12 @@ const CompactPerformanceChart: React.FC<{
                                     <p className="text-[11px] font-medium text-muted-foreground truncate mb-1" title={metric.title}>{metric.title.split('(')[0]}</p>
                                     {/* Bar for A (English) */}
                                     <div className="w-full bg-muted rounded h-3.5 relative group">
-                                        <div className="bg-primary h-3.5 rounded" style={{ width: `${((metric.valueA ?? 0) / metric.maxValue) * 100}%` }}></div>
+                                        <div className="bg-blue-500 h-3.5 rounded" style={{ width: `${((metric.valueA ?? 0) / metric.maxValue) * 100}%` }}></div>
                                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-[10px] px-1.5 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">{(metric.valueA ?? 0).toFixed(2)}{metric.unit}</div>
                                     </div>
                                     {/* Bar for B (Native) */}
                                     <div className="w-full bg-muted rounded h-3.5 relative group mt-1">
-                                        <div className="bg-indigo-500 h-3.5 rounded" style={{ width: `${((metric.valueB ?? 0) / metric.maxValue) * 100}%` }}></div>
+                                        <div className="bg-violet-400 h-3.5 rounded" style={{ width: `${((metric.valueB ?? 0) / metric.maxValue) * 100}%` }}></div>
                                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-[10px] px-1.5 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">{(metric.valueB ?? 0).toFixed(2)}{metric.unit}</div>
                                     </div>
                                 </div>
@@ -517,7 +517,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             dimensions,
             datasets: [
                 { label: 'English', color: '#3b82f6', values: avgScoresA }, // blue-500
-                { label: 'Native Language', color: '#6366f1', values: avgScoresB }, // indigo-500
+                { label: 'Native Language', color: '#a78bfa', values: avgScoresB }, // violet-400
             ],
         };
     }, [filteredEvaluations]);
@@ -862,8 +862,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <DashboardCard title="Average Performance" subtitle="Comparing output metrics between English and native language responses.">
                              <div className="flex justify-end items-center gap-4 text-xs mb-4">
-                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary"></span><span>English</span></div>
-                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-500"></span><span>Native Language</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500"></span><span>English</span></div>
+                                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-violet-400"></span><span>Native Language</span></div>
                             </div>
                             <BarChart data={[
                                 { label: 'Generation Time', valueA: metrics.avgTimeA, valueB: metrics.avgTimeB, unit: 's' },
@@ -981,8 +981,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                     <h4 className="font-semibold text-foreground text-center">Performance Metrics</h4>
                                     <p className="text-xs text-muted-foreground text-center -mt-2 mb-4">Compares average generation speed and output length, showing English vs. Native language results.</p>
                                     <div className="flex justify-center items-center gap-4 text-xs mb-4">
-                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary"></span><span>English (A)</span></div>
-                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-500"></span><span>Native (B)</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500"></span><span>English (A)</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-violet-400"></span><span>Native (B)</span></div>
                                     </div>
                                     <CompactPerformanceChart data={modelComparisonData.performanceData} />
                                 </div>
