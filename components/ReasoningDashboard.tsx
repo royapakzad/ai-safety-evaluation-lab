@@ -343,17 +343,17 @@ const GroupedBarChart: React.FC<{
                 {data.map(({ label, values }) => (
                     <div key={label}>
                         <p className="font-medium text-foreground mb-1.5">{label}</p>
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                             {models.map(modelId => {
                                 const value = values[modelId] ?? 0;
                                 const widthPercent = (value / maxValue) * 100;
                                 const color = modelColors[modelId] || modelColors.default;
                                 return (
-                                    <div key={modelId} className="flex items-center gap-2 group">
-                                        <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: color }}></div>
-                                        <div className="flex-grow bg-muted rounded-full h-5 relative">
-                                            <div className="h-5 rounded-full transition-all duration-300" style={{ width: `${widthPercent}%`, backgroundColor: color }}></div>
-                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white font-bold text-xs transition-opacity duration-200 opacity-0 group-hover:opacity-100">{value.toFixed(2)}{unit}</span>
+                                    <div key={modelId} className="flex items-center gap-2.5 group">
+                                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }}></div>
+                                        <div className="flex-grow bg-muted rounded h-3 relative">
+                                            <div className="h-3 rounded transition-all duration-300" style={{ width: `${widthPercent}%`, backgroundColor: color }}></div>
+                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white px-1.5 py-0.5 rounded text-[10px] font-semibold transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none">{value.toFixed(2)}{unit}</span>
                                         </div>
                                     </div>
                                 );
