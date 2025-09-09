@@ -14,7 +14,6 @@ While most LLM development and testing is English-centric, the majority of the w
 
 This lab's primary purpose is to empower researchers, developers, and policymakers to rigorously assess **how model performance, safety, and alignment change across different languages**. It provides the tools to move beyond assumptions and gather concrete evidence, ensuring that AI systems are developed and deployed in a way that is equitable, fair, and safe for global, multilingual populations.
 
-<img width="1002" height="780" alt="Screenshot 2025-09-09 at 4 49 16 PM" src="https://github.com/user-attachments/assets/9a3dcc12-a16c-4822-abe5-deb16b9de691" />
 
 ---
 
@@ -35,6 +34,8 @@ The lab’s core function enables a direct comparison of an LLM’s response to 
 Evaluations use a rubric derived from the **[UN B-Tech Project’s GenAI taxonomy of harm](https://www.ohchr.org/en/documents/tools-and-resources/taxonomy-generative-ai-human-rights-harms-b-tech-gen-ai-project)**. This specialized framework is designed to measure the human rights impact of AI-generated content, making it particularly relevant for vulnerable, non-English-speaking communities.
 
 <img width="1007" height="775" alt="Screenshot 2025-09-09 at 4 58 41 PM" src="https://github.com/user-attachments/assets/bc425730-94fe-463e-95a7-4cd67f6b3567" />
+
+
 
 <img width="995" height="796" alt="Screenshot 2025-09-09 at 4 55 44 PM" src="https://github.com/user-attachments/assets/ca232139-ae78-447b-9faf-8b2caca67d6f" />
 
