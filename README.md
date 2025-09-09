@@ -20,7 +20,7 @@ This lab's primary purpose is to empower researchers, developers, and policymake
 The platform is built around a comparison lab and a meta-evaluation system, all designed with a multilingual focus.
 
 ### A. Systematic Multilingual Evaluation
-The lab’s core function enables **direct comparison** of an LLM’s response to an English prompt versus its response to the same prompt translated into one of dozens of supported languages. This allows precise measurement of:
+The lab’s core function enables a direct comparison of an LLM’s response to an English prompt with its response to the same prompt translated into another non-English language, selected by the evaluator from a drop-down menu. Both the English and non-English prompts are run on the chosen LLM (selected from the model menu), allowing evaluators to view the responses side by side and assess them using a human rights-based rubric.
 
 - **Performance Degradation:** Does the quality, accuracy, or coherence of the answer decrease in the target language?  
 - **Logical Inconsistencies:** Does the model contradict itself or show flawed reasoning in one language but not the other?  
