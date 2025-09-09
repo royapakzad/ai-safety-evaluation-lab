@@ -42,6 +42,8 @@ An interactive, filterable dashboard provides both high-level and detailed views
 
 <img width="1129" height="396" alt="Screenshot 2025-09-09 at 3 46 26 PM" src="https://github.com/user-attachments/assets/0ccc12b9-d5ca-47d5-a7af-0adc5e1496f9" />
 
+<img width="1123" height="650" alt="Screenshot 2025-09-09 at 3 46 41 PM" src="https://github.com/user-attachments/assets/d717d202-5d26-401f-b442-2c859eb900a4" />
+
 ---
 
 ## 3. Benefits: Why Multilingual Evaluation Matters for Responsible AI
