@@ -366,36 +366,52 @@ const GroupedBarChart: React.FC<{
     );
 };
 
-const PairedBarChart: React.FC<{
-    title: string;
-    data: { modelId: string, modelName: string, valueA: number, valueB: number }[];
-    unit: string;
-}> = ({ title, data, unit }) => {
-    const maxValue = Math.max(1, ...data.flatMap(d => [d.valueA, d.valueB]));
+const CompactPerformanceChart: React.FC<{
+    data: {
+        title: string;
+        data: { modelId: string, modelName: string, valueA: number, valueB: number }[];
+        unit: string;
+    }[];
+}> = ({ data }) => {
+    if (!data || data.length === 0) return null;
+    const models = data[0].data; // Assumes all metrics have the same models
+    const metrics = data.map(m => ({ title: m.title, unit: m.unit }));
+
     return (
-        <div>
-            <h5 className="font-semibold text-foreground/90 text-center text-sm mb-3">{title}</h5>
-            <div className="space-y-3">
-                {data.map(item => (
-                    <div key={item.modelId}>
-                        <p className="text-xs font-medium text-muted-foreground mb-1.5">{item.modelName}</p>
-                        {/* Bar for A (English) */}
-                        <div className="flex items-center gap-2 text-xs group">
-                            <div className="w-full bg-muted rounded h-4 relative">
-                                <div className="bg-sky-500 h-4 rounded" style={{ width: `${(item.valueA / maxValue) * 100}%` }}></div>
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white font-bold text-[10px] transition-opacity duration-200 opacity-0 group-hover:opacity-100">{item.valueA.toFixed(2)}{unit}</span>
-                            </div>
-                        </div>
-                        {/* Bar for B (Native) */}
-                        <div className="flex items-center gap-2 text-xs mt-1 group">
-                             <div className="w-full bg-muted rounded h-4 relative">
-                                <div className="bg-teal-500 h-4 rounded" style={{ width: `${(item.valueB / maxValue) * 100}%` }}></div>
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white font-bold text-[10px] transition-opacity duration-200 opacity-0 group-hover:opacity-100">{item.valueB.toFixed(2)}{unit}</span>
-                            </div>
+        <div className="space-y-4">
+            {models.map(model => {
+                // Find the data for this specific model across all metrics
+                const modelMetrics = metrics.map(metricInfo => {
+                    const metricDataset = data.find(d => d.title === metricInfo.title);
+                    const modelData = metricDataset?.data.find(d => d.modelId === model.modelId);
+                    // Find max value for this specific metric for normalization
+                    const maxValue = Math.max(1, ...(metricDataset?.data.map(d => Math.max(d.valueA, d.valueB)) || [1]));
+                    return { ...metricInfo, ...modelData, maxValue };
+                });
+
+                return (
+                    <div key={model.modelId} className="p-3 bg-background rounded-lg border border-border/60">
+                        <h5 className="font-semibold text-foreground text-xs mb-3">{model.modelName}</h5>
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                            {modelMetrics.map(metric => (
+                                <div key={metric.title}>
+                                    <p className="text-[11px] font-medium text-muted-foreground truncate mb-1" title={metric.title}>{metric.title.split('(')[0]}</p>
+                                    {/* Bar for A (English) */}
+                                    <div className="w-full bg-muted rounded h-3.5 relative group">
+                                        <div className="bg-sky-500 h-3.5 rounded" style={{ width: `${((metric.valueA ?? 0) / metric.maxValue) * 100}%` }}></div>
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-[10px] px-1.5 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">{(metric.valueA ?? 0).toFixed(2)}{metric.unit}</div>
+                                    </div>
+                                    {/* Bar for B (Native) */}
+                                    <div className="w-full bg-muted rounded h-3.5 relative group mt-1">
+                                        <div className="bg-teal-500 h-3.5 rounded" style={{ width: `${((metric.valueB ?? 0) / metric.maxValue) * 100}%` }}></div>
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-popover text-popover-foreground text-[10px] px-1.5 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">{(metric.valueB ?? 0).toFixed(2)}{metric.unit}</div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                ))}
-            </div>
+                );
+            })}
         </div>
     );
 };
@@ -450,19 +466,24 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         const totalEvals = filteredEvaluations.length;
         const withReasoningA = filteredEvaluations.filter(e => e.reasoningRequestedA);
         const withReasoningB = filteredEvaluations.filter(e => e.reasoningRequestedB);
+
+        const totalTimeA = filteredEvaluations.reduce((acc, curr) => acc + (curr.generationTimeSecondsA ?? 0), 0);
+        const totalTimeB = filteredEvaluations.reduce((acc, curr) => acc + (curr.generationTimeSecondsB ?? 0), 0);
+        const totalWordsA = filteredEvaluations.reduce((acc, curr) => acc + curr.answerWordCountA, 0);
+        const totalWordsB = filteredEvaluations.reduce((acc, curr) => acc + curr.answerWordCountB, 0);
         
         return {
             totalEvaluations: totalEvals,
             uniqueScenarios: new Set(filteredEvaluations.map(e => e.scenarioId)).size,
             modelsTested: new Set(filteredEvaluations.map(e => e.model)).size,
-            avgTimeA: filteredEvaluations.reduce((acc, curr) => acc + (curr.generationTimeSecondsA ?? 0), 0) / totalEvals,
-            avgTimeB: filteredEvaluations.reduce((acc, curr) => acc + (curr.generationTimeSecondsB ?? 0), 0) / totalEvals,
-            avgWordsA: filteredEvaluations.reduce((acc, curr) => acc + curr.answerWordCountA, 0) / totalEvals,
-            avgWordsB: filteredEvaluations.reduce((acc, curr) => acc + curr.answerWordCountB, 0) / totalEvals,
+            avgTimeA: totalTimeA / totalEvals,
+            avgTimeB: totalTimeB / totalEvals,
+            avgWordsA: totalWordsA / totalEvals,
+            avgWordsB: totalWordsB / totalEvals,
             avgReasoningWordsA: withReasoningA.length > 0 ? withReasoningA.reduce((acc, curr) => acc + curr.reasoningWordCountA, 0) / withReasoningA.length : 0,
             avgReasoningWordsB: withReasoningB.length > 0 ? withReasoningB.reduce((acc, curr) => acc + curr.reasoningWordCountB, 0) / withReasoningB.length : 0,
-            avgWordsPerSecondA: filteredEvaluations.reduce((acc, curr) => acc + (curr.wordsPerSecondA ?? 0), 0) / totalEvals,
-            avgWordsPerSecondB: filteredEvaluations.reduce((acc, curr) => acc + (curr.wordsPerSecondB ?? 0), 0) / totalEvals,
+            avgWordsPerSecondA: totalTimeA > 0 ? totalWordsA / totalTimeA : 0,
+            avgWordsPerSecondB: totalTimeB > 0 ? totalWordsB / totalTimeB : 0,
         };
     }, [filteredEvaluations]);
 
@@ -664,7 +685,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
             const scoreSums = Object.fromEntries(dimensionKeys.map(k => [k, 0]));
             const disparityCounts = Object.fromEntries(disparityKeys.map(k => [k, 0]));
-            const perfMetrics = { totalGenTimeA: 0, totalGenTimeB: 0, totalAnswerWordsA: 0, totalAnswerWordsB: 0, totalWpsA: 0, totalWpsB: 0 };
+            const perfMetrics = { totalGenTimeA: 0, totalGenTimeB: 0, totalAnswerWordsA: 0, totalAnswerWordsB: 0 };
             
             evals.forEach(ev => {
                 // Quality Scores
@@ -684,8 +705,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 perfMetrics.totalGenTimeB += (ev.generationTimeSecondsB ?? 0);
                 perfMetrics.totalAnswerWordsA += (ev.answerWordCountA ?? 0);
                 perfMetrics.totalAnswerWordsB += (ev.answerWordCountB ?? 0);
-                perfMetrics.totalWpsA += (ev.wordsPerSecondA ?? 0);
-                perfMetrics.totalWpsB += (ev.wordsPerSecondB ?? 0);
             });
             
             results[model] = {
@@ -696,8 +715,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 avgGenTimeB: perfMetrics.totalGenTimeB / count,
                 avgAnswerWordsA: perfMetrics.totalAnswerWordsA / count,
                 avgAnswerWordsB: perfMetrics.totalAnswerWordsB / count,
-                avgWpsA: perfMetrics.totalWpsA / count,
-                avgWpsB: perfMetrics.totalWpsB / count,
+                avgWpsA: perfMetrics.totalGenTimeA > 0 ? perfMetrics.totalAnswerWordsA / perfMetrics.totalGenTimeA : 0,
+                avgWpsB: perfMetrics.totalGenTimeB > 0 ? perfMetrics.totalAnswerWordsB / perfMetrics.totalGenTimeB : 0,
             };
         });
 
@@ -956,21 +975,14 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                         unit="%"
                                     />
                                 </div>
-                                <div className="space-y-6">
+                                <div>
                                     <h4 className="font-semibold text-foreground text-center">Performance Metrics</h4>
                                     <p className="text-xs text-muted-foreground text-center -mt-2 mb-4">Compares average generation speed and output length, showing English vs. Native language results.</p>
                                     <div className="flex justify-center items-center gap-4 text-xs">
                                         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-sky-500"></span><span>English (A)</span></div>
                                         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-teal-500"></span><span>Native (B)</span></div>
                                     </div>
-                                    {modelComparisonData.performanceData.map(chart => (
-                                        <PairedBarChart
-                                            key={chart.title}
-                                            title={chart.title}
-                                            data={chart.data}
-                                            unit={chart.unit}
-                                        />
-                                    ))}
+                                    <CompactPerformanceChart data={modelComparisonData.performanceData} />
                                 </div>
                             </div>
                         </DashboardCard>
