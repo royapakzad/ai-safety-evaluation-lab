@@ -148,3 +148,14 @@ llm-safety-lab/
 ├── README.md           # This file
 └── llmtaskscompleted.md # Log of completed work
 ```
+## 9. Credits & Acknowledgments
+
+This project was developed as part of the **Mozilla Foundation Trustworthy AI Program**, under the **Senior Fellowship** of **Roya Pakzad**.
+
+- **Lead Research & Development:** Roya Pakzad  
+- **Organizational Home:** Taraaz  
+- **Program Support:** Mozilla Foundation  
+
+Special thanks to all contributors, evaluators, and civil society partners who participated in testing and evaluation.
+
+---
