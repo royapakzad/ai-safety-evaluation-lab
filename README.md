@@ -14,6 +14,8 @@ While most LLM development and testing is English-centric, the majority of the w
 
 This lab's primary purpose is to empower researchers, developers, and policymakers to rigorously assess **how model performance, safety, and alignment change across different languages**. It provides the tools to move beyond assumptions and gather concrete evidence, ensuring that AI systems are developed and deployed in a way that is equitable, fair, and safe for global, multilingual populations.
 
+<img width="1002" height="780" alt="Screenshot 2025-09-09 at 4 49 16 PM" src="https://github.com/user-attachments/assets/9a3dcc12-a16c-4822-abe5-deb16b9de691" />
+
 ---
 
 ## 2. Core Capabilities
