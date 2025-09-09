@@ -200,7 +200,7 @@ const StackedBarChart: React.FC<{
                                 {llmItem.total > 0 ? (
                                     <>
                                         <div className="w-full flex h-5 rounded-md overflow-hidden bg-muted">
-                                            <button className="bg-destructive/80 hover:bg-destructive transition-colors" style={{ width: `${llmYesPercent}%` }} title={`Yes: ${llmItem.yes}`} onClick={() => onBarClick(d.label, 'yes', 'llm')}></button>
+                                            <button className="bg-destructive/60 hover:bg-destructive transition-colors" style={{ width: `${llmYesPercent}%` }} title={`Yes: ${llmItem.yes}`} onClick={() => onBarClick(d.label, 'yes', 'llm')}></button>
                                             <button className="bg-emerald-400 hover:bg-emerald-500 transition-colors" style={{ width: `${llmNoPercent}%` }} title={`No: ${llmItem.no}`} onClick={() => onBarClick(d.label, 'no', 'llm')}></button>
                                             <button className="bg-slate-300 hover:bg-slate-400 transition-colors" style={{ width: `${llmUnsurePercent}%` }} title={`Unsure: ${llmItem.unsure}`} onClick={() => onBarClick(d.label, 'unsure', 'llm')}></button>
                                         </div>
