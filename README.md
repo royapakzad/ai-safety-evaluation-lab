@@ -2,6 +2,7 @@
 # Multilingual AI Safety Evaluation Laboratory
 
 #### 👩🏻‍💻 Web Platform for Evaluators:  [Multilingual LLM Safety Evaluation Lab](https://ai-safety-evaluation-lab.vercel.app/)
+To create an account look at section 5. Access Control & Login
 
 ---
 
