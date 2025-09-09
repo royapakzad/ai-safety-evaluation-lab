@@ -59,10 +59,10 @@ const RadarChart: React.FC<{
 }> = ({ data, onLabelClick }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
 
-    const size = 360; // Increased size for labels
+    const size = 400; // Increased size to prevent label cutoff
     const center = size / 2;
     const numLevels = 5;
-    const radius = center * 0.7; // Radius for chart area
+    const radius = center * 0.55; // Reduced radius to give labels more space
     const levelDistance = radius / numLevels;
     const numAxes = data.labels.length;
 
@@ -118,7 +118,7 @@ const RadarChart: React.FC<{
                 {/* Labels */}
                 {data.labels.map((label, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
-                    const labelRadius = radius + 25; // Push labels out slightly more
+                    const labelRadius = radius + 30; // Position labels with enough margin
                     const x = center + labelRadius * Math.cos(angle);
                     const y = center + labelRadius * Math.sin(angle);
                     
