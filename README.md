@@ -51,14 +51,23 @@ An interactive, filterable dashboard provides both high-level and detailed views
 
 ---
 
+
 ## 3. Benefits: Why Multilingual Evaluation Matters for Responsible AI
 
-This lab is an essential tool for organizations committed to safe and ethical AI deployment, especially governments and international organizations such as the UN.
+The **Multilingual Evaluation Lab** is a **platform** that helps governments, international agencies, researchers, and civil society organizations to **actively evaluate, benchmark, and understand** how AI systems perform across languages and cultural contexts. By making evaluation accessible and transparent, it empowers stakeholders to shape safer, more inclusive technologies.
 
-- **Exposing Language-Based Disparities & Harms:** Uncover risks that only manifest in other languages, such as weaker safety guardrails or higher rates of misinformation.  
-- **Ensuring Global Equity:** Assess an LLM’s utility and safety for minority language speakers, helping prevent inadvertent discrimination.  
-- **Evidence for Governance & Procurement:** Provide concrete data that supports informed procurement decisions, ensuring models serve *all* constituents.  
-- **Developing Better, Safer Models:** Identify *why* a model fails in specific languages to guide fine-tuning, safety systems, and culturally sensitive interaction protocols.  
+- **Revealing Hidden Risks Across Languages:**  
+  Detect safety gaps and disparities that only appear in non-English interactions, allowing organizations to address risks before deployment.  
+
+- **Supporting Governance & Procurement:**  
+  Provide a practical evaluation environment and standardized benchmarks that decision-makers can use to inform procurement and oversight practices.  
+
+- **Advancing Safer AI Development:**  
+  Highlight *where* and *why* models fail in specific languages or domains, offering actionable insights for fine-tuning, safeguards, and culturally sensitive design.  
+
+- **Promoting Equity & Building Capacity:**  
+  Ensure AI systems work safely and fairly for marginalized language communities while raising broader awareness of multilingual safety issues. The platform creates shared space for policymakers, developers, and civil society to collaborate on solutions.  
+
 
 ---
 
