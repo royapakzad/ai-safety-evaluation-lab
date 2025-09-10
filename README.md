@@ -78,12 +78,18 @@ The **Multilingual Evaluation Lab** is a **platform** that helps governments, in
 - **Structured Red Teaming Integration:** Adversarial prompt modules for language-specific vulnerabilities.  
 - **Multi-modal Evaluation:** Assess models across images, audio, and video generation.  
 - **Enhanced Analytics & Tracking:** Dashboards to monitor multilingual safety drift over time.  
-- **Advanced Internationalization & Localization:** Evaluate contextual nuance, dialects, and cultural appropriateness.  
+- **Advanced Internationalization & Localization:** Evaluate contextual nuance, dialects, and cultural appropriateness.
+
+### Data & Benchmarking
+- **Evaluation-to-Benchmarking Pipeline:** Integrate evaluator contributions directly into a frozen benchmark, enabling reproducible tests and standardized comparisons across models and languages.  
+- **Continuous Benchmark Updates:** Establish transparent versioning (v0.1, v0.2…) so the platform evolves as new languages, domains, and harms are added.   
 
 ### Socio-Technical & Governance Evaluation
-- **Corporate Policy Gap Analysis:** Compare companies’ stated AI principles against real-world performance.  
-- **Market Access & Accessibility:** Assess equitable availability of AI-powered services.  
-- **Contextual Vulnerability Assessment:** Map stakeholder risks and country-specific vulnerabilities for holistic societal impact analysis.  
+- **Corporate Policy & Transparency Analysis:** Examine companies’ stated AI principles, privacy policies, terms of service, and compliance frameworks against observed model behavior.  
+- **Sanctions & Regulatory Compliance:** Conduct nuanced assessments of how companies interpret and enforce international sanctions, export controls, and local regulatory obligations. This includes examining risks of over-enforcement, chilling effects on access, and broader digital rights implications for users in sanctioned or marginalized regions.  
+- **Business Model & Incentives:** Assess how monetization strategies, data practices, and product roadmaps affect safety, accessibility, and equity outcomes.  
+- **Contextual Vulnerability Assessment:** Map risks for specific user groups and country contexts, linking technical evaluation findings to broader societal impacts.  
+ 
 
 ---
 
