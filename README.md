@@ -3,6 +3,8 @@
 
 #### 👩🏻‍💻 Web Platform for Evaluators:  [Multilingual LLM Safety Evaluation Lab](https://ai-safety-evaluation-lab.vercel.app/)
 _To create an account look at section 5. Access Control & Login_
+#### [![Watch the video](<img width="1131" height="734" alt="Screenshot 2025-09-09 at 3 45 54 PM" src="https://github.com/user-attachments/assets/8b1cb005-e676-4740-8620-453f7130459c" />
+](https://drive.google.com/file/d/1HkflXeKmkX8QZwoXb7hPVMnYnRk6014G/view?usp=sharing)
 
 ---
 
