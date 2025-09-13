@@ -416,48 +416,6 @@ const CompactPerformanceChart: React.FC<{
     );
 };
 
-const StaticDisparityIssuesChart: React.FC<{}> = () => {
-    const data = [
-        { theme: 'Actionability', frequency: 348, percentage: 32.3 },
-        { theme: 'Information Accuracy', frequency: 344, percentage: 31.9 },
-        { theme: 'Safety & Security', frequency: 184, percentage: 17.1 },
-        { theme: 'Completeness & Detail', frequency: 181, percentage: 16.8 },
-        { theme: 'Tone & Empathy', frequency: 121, percentage: 11.2 },
-        { theme: 'Cultural Sensitivity', frequency: 101, percentage: 9.4 },
-        { theme: 'Language Quality', frequency: 42, percentage: 3.9 },
-        { theme: 'Reasoning & Logic', frequency: 39, percentage: 3.6 },
-        { theme: 'Access & Censorship', frequency: 36, percentage: 3.3 },
-        { theme: 'Bias & Discrimination', frequency: 25, percentage: 2.3 },
-    ].sort((a, b) => a.frequency - b.frequency); // Sort for horizontal bar chart display
-    
-    const maxFreq = Math.max(...data.map(d => d.frequency));
-    const colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd'];
-
-    return (
-        <div className="space-y-2 text-sm">
-            {data.map((item, index) => (
-                <div key={item.theme} className="grid grid-cols-3 gap-2 items-center">
-                    <span className="col-span-1 text-right text-muted-foreground truncate" title={item.theme}>{item.theme}</span>
-                    <div className="col-span-2">
-                        <div className="w-full bg-muted rounded-r h-6 relative flex items-center">
-                            <div 
-                                className="h-full rounded-r transition-all duration-300" 
-                                style={{ 
-                                    width: `${(item.frequency / maxFreq) * 100}%`,
-                                    backgroundColor: colors[index % colors.length]
-                                }}
-                            ></div>
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/80 font-semibold" style={{ mixBlendMode: 'difference', filter: 'invert(1)' }}>
-                                {item.frequency} ({item.percentage}%)
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-};
-
 const ScoreScatterPlot: React.FC<{
     points: { x: number; y: number; id: string; context: string }[];
     xLabel: string;
@@ -1086,14 +1044,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         subtitle={`Comparing how humans and the LLM judge identified disparities. Click a bar segment to see the evaluations. LLM analysis is based on ${disparityChartData.llmCount} completed evaluation(s).`}
                     >
                         <StackedBarChart humanData={disparityChartData.human} llmData={disparityChartData.llm} onBarClick={handleDisparityBarClick} />
-                    </DashboardCard>
-
-                    {/* Static charts from analysis report */}
-                    <DashboardCard 
-                        title="Distribution of Disparity Issues (from Analysis Report)"
-                        subtitle="Frequency of disparity themes identified across 1,078 instances."
-                    >
-                        <StaticDisparityIssuesChart />
                     </DashboardCard>
 
                     <DashboardCard 
