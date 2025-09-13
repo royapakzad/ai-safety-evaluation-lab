@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
 import LoadingSpinner from './LoadingSpinner';
@@ -416,6 +416,125 @@ const CompactPerformanceChart: React.FC<{
     );
 };
 
+const StaticDisparityIssuesChart: React.FC<{}> = () => {
+    const data = [
+        { theme: 'Actionability', frequency: 348, percentage: 32.3 },
+        { theme: 'Information Accuracy', frequency: 344, percentage: 31.9 },
+        { theme: 'Safety & Security', frequency: 184, percentage: 17.1 },
+        { theme: 'Completeness & Detail', frequency: 181, percentage: 16.8 },
+        { theme: 'Tone & Empathy', frequency: 121, percentage: 11.2 },
+        { theme: 'Cultural Sensitivity', frequency: 101, percentage: 9.4 },
+        { theme: 'Language Quality', frequency: 42, percentage: 3.9 },
+        { theme: 'Reasoning & Logic', frequency: 39, percentage: 3.6 },
+        { theme: 'Access & Censorship', frequency: 36, percentage: 3.3 },
+        { theme: 'Bias & Discrimination', frequency: 25, percentage: 2.3 },
+    ].sort((a, b) => a.frequency - b.frequency); // Sort for horizontal bar chart display
+    
+    const maxFreq = Math.max(...data.map(d => d.frequency));
+    const colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd'];
+
+    return (
+        <div className="space-y-2 text-sm">
+            {data.map((item, index) => (
+                <div key={item.theme} className="grid grid-cols-3 gap-2 items-center">
+                    <span className="col-span-1 text-right text-muted-foreground truncate" title={item.theme}>{item.theme}</span>
+                    <div className="col-span-2">
+                        <div className="w-full bg-muted rounded-r h-6 relative flex items-center">
+                            <div 
+                                className="h-full rounded-r transition-all duration-300" 
+                                style={{ 
+                                    width: `${(item.frequency / maxFreq) * 100}%`,
+                                    backgroundColor: colors[index % colors.length]
+                                }}
+                            ></div>
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/80 font-semibold" style={{ mixBlendMode: 'difference', filter: 'invert(1)' }}>
+                                {item.frequency} ({item.percentage}%)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const ScoreScatterPlot: React.FC<{
+    points: { x: number; y: number; id: string; context: string }[];
+    xLabel: string;
+    yLabel:string;
+    title: string;
+    maxVal: number;
+}> = ({ points, xLabel, yLabel, title, maxVal }) => {
+    const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
+    const size = 350;
+    const padding = 40;
+    const plotSize = size - padding * 2;
+
+    const xScale = (val: number) => padding + (val / maxVal) * plotSize;
+    const yScale = (val: number) => padding + plotSize - (val / maxVal) * plotSize;
+
+    if (points.length === 0) {
+        return <div className="text-center text-muted-foreground italic h-[350px] flex items-center justify-center">Not enough comparable data for this chart.</div>;
+    }
+
+    return (
+        <div className="relative flex flex-col items-center">
+            <h5 className="font-semibold text-foreground text-center mb-2 text-sm">{title}</h5>
+            <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`}>
+                {/* Axes */}
+                <line x1={padding} y1={size - padding} x2={size - padding} y2={size - padding} stroke="var(--color-border)" />
+                <line x1={padding} y1={padding} x2={padding} y2={size - padding} stroke="var(--color-border)" />
+                
+                {/* Ticks */}
+                {[...Array(Math.ceil(maxVal * 10) + 1)].map((_, i) => {
+                    const val = i / 10;
+                     if (val > maxVal) return null;
+                    const tickInterval = maxVal <= 1 ? 0.1 : (maxVal <= 10 ? 1 : Math.ceil(maxVal / 5));
+                    // A bit of logic to not overcrowd ticks
+                    if (val !== 0 && val !== maxVal && val % tickInterval !== 0 && Math.abs(val - Math.round(val)) > 0.01) return null;
+
+                    const x = xScale(val);
+                    const y = yScale(val);
+                    return <g key={i}>
+                        <line x1={x} y1={size-padding} x2={x} y2={size-padding+5} stroke="var(--color-border)"/>
+                        <text x={x} y={size-padding+15} textAnchor="middle" fontSize="10" className="fill-muted-foreground">{val}</text>
+                        <line x1={padding-5} y1={y} x2={padding} y2={y} stroke="var(--color-border)"/>
+                        <text x={padding-10} y={y} textAnchor="end" dominantBaseline="middle" fontSize="10" className="fill-muted-foreground">{val}</text>
+                    </g>
+                })}
+
+                {/* Diagonal Line of Perfect Agreement */}
+                <line x1={padding} y1={size - padding} x2={size - padding} y2={padding} stroke="var(--color-destructive)" strokeDasharray="4" />
+
+                {/* Points */}
+                {points.map(p => (
+                    <circle 
+                        key={p.id} 
+                        cx={xScale(p.x)} 
+                        cy={yScale(p.y)} 
+                        r="5" 
+                        className="fill-primary/60 stroke-primary cursor-pointer"
+                        onMouseEnter={() => setTooltip({ x: xScale(p.x), y: yScale(p.y) - 10, text: p.context })}
+                        onMouseLeave={() => setTooltip(null)}
+                    />
+                ))}
+
+                {/* Labels */}
+                <text x={size/2} y={size-5} textAnchor="middle" fontSize="12" className="fill-foreground font-medium">{xLabel}</text>
+                <text x={15} y={size/2} textAnchor="middle" fontSize="12" className="fill-foreground font-medium" transform={`rotate(-90, 15, ${size/2})`}>{yLabel}</text>
+            </svg>
+             {tooltip && (
+                <div
+                    className="absolute bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-lg pointer-events-none z-[100] max-w-[200px]"
+                    style={{ left: tooltip.x, top: tooltip.y, transform: 'translate(-50%, -100%)' }}
+                >
+                    {tooltip.text}
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 // --- MAIN COMPONENT ---
 
@@ -769,6 +888,40 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             performanceData: performanceDataForChart,
         };
     }, [filteredEvaluations]);
+    
+    // Data for the static Human vs LLM comparison plots from the Python script
+    const humanVsLlmComparisonData = {
+        combinedScores: {
+            points: [
+                { x: 5.79, y: 9.09, id: 'ctx-1', context: 'Documentation and Legal Status' },
+                { x: 5.96, y: 9.49, id: 'ctx-2', context: 'Cultural and Linguistic Competency' },
+                { x: 6.11, y: 7.23, id: 'ctx-3', context: 'Digital Security and Privacy' },
+                { x: 6.2,  y: 7.62, id: 'ctx-4', context: 'Medical and Health Access' },
+                { x: 6.5,  y: 10.39,id: 'ctx-5', context: 'Education and Professional Life' },
+                { x: 6.8,  y: 10.47,id: 'ctx-6', context: 'Healthcare and Mental Health' },
+                { x: 6.2,  y: 9.13, id: 'ctx-7', context: 'Economic Survival' },
+                { x: 6.0,  y: 9.4,  id: 'ctx-8', context: 'LGBTQ+ Issues' },
+                { x: 6.1,  y: 9.5,  id: 'ctx-9', context: 'Family Separation' },
+                { x: 6.03, y: 9.0,  id: 'ctx-10', context: 'Housing and Safety' },
+            ],
+            maxVal: 11, // A bit higher than max value for padding
+        },
+        disparityScores: {
+            points: [
+                { x: 0.46, y: 0.40, id: 'disp-1', context: 'Documentation and Legal Status' },
+                { x: 0.41, y: 0.53, id: 'disp-2', context: 'Cultural and Linguistic Competency' },
+                { x: 0.45, y: 0.55, id: 'disp-3', context: 'Digital Security and Privacy' },
+                { x: 0.58, y: 0.45, id: 'disp-4', context: 'Medical and Health Access' },
+                { x: 0.52, y: 0.36, id: 'disp-5', context: 'Education and Professional Life' },
+                { x: 0.46, y: 0.37, id: 'disp-6', context: 'Healthcare and Mental Health' },
+                { x: 0.47, y: 0.49, id: 'disp-7', context: 'Economic Survival' },
+                { x: 0.49, y: 0.35, id: 'disp-8', context: 'LGBTQ+ Issues' },
+                { x: 0.48, y: 0.38, id: 'disp-9', context: 'Family Separation' },
+                { x: 0.43, y: 0.35, id: 'disp-10', context: 'Housing and Safety' },
+            ],
+            maxVal: 0.6,
+        }
+    };
 
 
     const handleDisparityBarClick = (label: string, category: 'yes' | 'no' | 'unsure', source: 'human' | 'llm') => {
@@ -927,12 +1080,42 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             </div>
                         </DashboardCard>
                     )}
-                    
+
                     <DashboardCard 
                         title="Disparity Analysis (Human vs. LLM Scores)"
                         subtitle={`Comparing how humans and the LLM judge identified disparities. Click a bar segment to see the evaluations. LLM analysis is based on ${disparityChartData.llmCount} completed evaluation(s).`}
                     >
                         <StackedBarChart humanData={disparityChartData.human} llmData={disparityChartData.llm} onBarClick={handleDisparityBarClick} />
+                    </DashboardCard>
+
+                    {/* Static charts from analysis report */}
+                    <DashboardCard 
+                        title="Distribution of Disparity Issues (from Analysis Report)"
+                        subtitle="Frequency of disparity themes identified across 1,078 instances."
+                    >
+                        <StaticDisparityIssuesChart />
+                    </DashboardCard>
+
+                    <DashboardCard 
+                        title="Human vs LLM Comparison (from Analysis Report)"
+                        subtitle="Compares scores between human evaluators and an LLM judge on key contexts."
+                    >
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <ScoreScatterPlot 
+                                points={humanVsLlmComparisonData.combinedScores.points}
+                                xLabel="Human Evaluator Combined Scores"
+                                yLabel="LLM Evaluator Combined Scores"
+                                title="Combined Score Comparison (Lower is worse)"
+                                maxVal={humanVsLlmComparisonData.combinedScores.maxVal}
+                            />
+                            <ScoreScatterPlot 
+                                points={humanVsLlmComparisonData.disparityScores.points}
+                                xLabel="Human Evaluator Disparity Scores"
+                                yLabel="LLM Evaluator Disparity Scores"
+                                title="Disparity Score Comparison (Higher is more disparity)"
+                                maxVal={humanVsLlmComparisonData.disparityScores.maxVal}
+                            />
+                        </div>
                     </DashboardCard>
 
                     {agreementMetrics && (
