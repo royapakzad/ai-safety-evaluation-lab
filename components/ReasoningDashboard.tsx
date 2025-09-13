@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useRef } from 'react';
-import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
+import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores, LlmEvaluation } from '../types';
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -428,9 +428,10 @@ const ScoreScatterPlot: React.FC<{
     const size = 350;
     const padding = 45;
     const plotSize = size - padding * 2;
+    const safeMaxVal = Math.max(1, maxVal);
 
-    const xScale = (val: number) => padding + (val / maxVal) * plotSize;
-    const yScale = (val: number) => padding + plotSize - (val / maxVal) * plotSize;
+    const xScale = (val: number) => padding + (val / safeMaxVal) * plotSize;
+    const yScale = (val: number) => padding + plotSize - (val / safeMaxVal) * plotSize;
 
     if (points.length === 0) {
         return <div className="text-center text-muted-foreground italic h-[350px] flex items-center justify-center">Not enough comparable data for this chart.</div>;
@@ -440,12 +441,13 @@ const ScoreScatterPlot: React.FC<{
         <div className="relative flex flex-col items-center bg-card p-4 rounded-xl border border-border">
             <h5 className="font-semibold text-foreground text-center mb-3 text-sm">{title}</h5>
             <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`} className="font-sans">
+                 <rect x={padding} y={padding} width={plotSize} height={plotSize} fill="var(--color-background)" />
                 {/* Grid Lines */}
-                {[...Array(Math.ceil(maxVal * 10) + 1)].map((_, i) => {
-                    const val = i / 10;
-                    if (val > maxVal) return null;
-                    const tickInterval = maxVal <= 1 ? 0.2 : (maxVal <= 10 ? 1 : Math.ceil(maxVal / 5));
-                    if (val !== 0 && val !== maxVal && val % tickInterval !== 0 && Math.abs(val - Math.round(val)) > 0.01) return null;
+                {[...Array(Math.ceil(safeMaxVal) + 1)].map((_, i) => {
+                    const val = i;
+                    if (val > safeMaxVal) return null;
+                     const tickInterval = safeMaxVal <= 1 ? 0.2 : (safeMaxVal <= 10 ? 1 : Math.ceil(safeMaxVal / 5));
+                    if (val !== 0 && val !== Math.round(safeMaxVal) && val % tickInterval !== 0) return null;
 
                     const x = xScale(val);
                     const y = yScale(val);
@@ -455,9 +457,11 @@ const ScoreScatterPlot: React.FC<{
                         <line x1={padding} y1={y} x2={size - padding} y2={y} className="stroke-border" strokeDasharray="2" />
                         
                         <text x={x} y={size - padding + 15} textAnchor="middle" fill="currentColor">{val}</text>
-                        <text x={padding - 10} y={y} textAnchor="end" dominantBaseline="middle" fill="currentColor">{val}</text>
+                        {val !== 0 && <text x={padding - 10} y={y} textAnchor="end" dominantBaseline="middle" fill="currentColor">{val}</text>}
                     </g>
                 })}
+                <text x={padding} y={size - padding + 15} textAnchor="middle" fill="currentColor" className="text-muted-foreground text-[10px]">0</text>
+
 
                 {/* Axes Lines */}
                 <line x1={padding} y1={padding} x2={padding} y2={size - padding} className="stroke-foreground/50" />
@@ -487,8 +491,8 @@ const ScoreScatterPlot: React.FC<{
                 ))}
 
                 {/* Labels */}
-                <text x={size / 2} y={size - 10} textAnchor="middle" className="text-xs text-foreground font-medium" fill="currentColor">{xLabel}</text>
-                <text x={15} y={size / 2} textAnchor="middle" className="text-xs text-foreground font-medium" transform={`rotate(-90, 15, ${size/2})`} fill="currentColor">{yLabel}</text>
+                <text x={size / 2} y={size - 10} textAnchor="middle" className="text-xs text-muted-foreground" fill="currentColor">{xLabel}</text>
+                <text x={15} y={size / 2} textAnchor="middle" className="text-xs text-muted-foreground" transform={`rotate(-90, 15, ${size/2})`} fill="currentColor">{yLabel}</text>
             </svg>
              {tooltip && (
                 <div
@@ -856,39 +860,62 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         };
     }, [filteredEvaluations]);
     
-    // Data for the static Human vs LLM comparison plots from the Python script
-    const humanVsLlmComparisonData = {
-        combinedScores: {
-            points: [
-                { x: 5.79, y: 9.09, id: 'ctx-1', context: 'Documentation and Legal Status' },
-                { x: 5.96, y: 9.49, id: 'ctx-2', context: 'Cultural and Linguistic Competency' },
-                { x: 6.11, y: 7.23, id: 'ctx-3', context: 'Digital Security and Privacy' },
-                { x: 6.2,  y: 7.62, id: 'ctx-4', context: 'Medical and Health Access' },
-                { x: 6.5,  y: 10.39,id: 'ctx-5', context: 'Education and Professional Life' },
-                { x: 6.8,  y: 10.47,id: 'ctx-6', context: 'Healthcare and Mental Health' },
-                { x: 6.2,  y: 9.13, id: 'ctx-7', context: 'Economic Survival' },
-                { x: 6.0,  y: 9.4,  id: 'ctx-8', context: 'LGBTQ+ Issues' },
-                { x: 6.1,  y: 9.5,  id: 'ctx-9', context: 'Family Separation' },
-                { x: 6.03, y: 9.0,  id: 'ctx-10', context: 'Housing and Safety' },
-            ],
-            maxVal: 11, // A bit higher than max value for padding
-        },
-        disparityScores: {
-            points: [
-                { x: 0.46, y: 0.40, id: 'disp-1', context: 'Documentation and Legal Status' },
-                { x: 0.41, y: 0.53, id: 'disp-2', context: 'Cultural and Linguistic Competency' },
-                { x: 0.45, y: 0.55, id: 'disp-3', context: 'Digital Security and Privacy' },
-                { x: 0.58, y: 0.45, id: 'disp-4', context: 'Medical and Health Access' },
-                { x: 0.52, y: 0.36, id: 'disp-5', context: 'Education and Professional Life' },
-                { x: 0.46, y: 0.37, id: 'disp-6', context: 'Healthcare and Mental Health' },
-                { x: 0.47, y: 0.49, id: 'disp-7', context: 'Economic Survival' },
-                { x: 0.49, y: 0.35, id: 'disp-8', context: 'LGBTQ+ Issues' },
-                { x: 0.48, y: 0.38, id: 'disp-9', context: 'Family Separation' },
-                { x: 0.43, y: 0.35, id: 'disp-10', context: 'Housing and Safety' },
-            ],
-            maxVal: 0.6,
-        }
-    };
+    const dynamicHumanVsLlmData = useMemo(() => {
+        const completedEvals = filteredEvaluations.filter(e => e.llmEvaluationStatus === 'completed' && e.llmScores);
+        if (completedEvals.length === 0) return null;
+
+        const calculateCombinedScore = (scores: LanguageSpecificRubricScores | LlmRubricScores): number => {
+            const numericScores = [
+                scores.actionability_practicality,
+                scores.factuality,
+                scores.tone_dignity_empathy,
+                getNumericScore('non_discrimination_fairness', scores),
+                getNumericScore('safety_security_privacy', scores),
+                getNumericScore('freedom_of_access_censorship', scores),
+            ];
+            return numericScores.reduce((a, b) => a + b, 0) / numericScores.length;
+        };
+        
+        const calculateDisparityScore = (disparity: ReasoningEvaluationRecord['humanScores']['disparity'] | LlmEvaluation['disparity']): number => {
+            return DISPARITY_CRITERIA.reduce((acc, crit) => {
+                return acc + (disparity[crit.key as keyof typeof disparity] === 'yes' ? 1 : 0);
+            }, 0);
+        };
+
+        const combinedScorePoints = completedEvals.map(ev => {
+            const humanAvgScore = (calculateCombinedScore(ev.humanScores.english) + calculateCombinedScore(ev.humanScores.native)) / 2;
+            const llmAvgScore = (calculateCombinedScore(ev.llmScores!.english) + calculateCombinedScore(ev.llmScores!.native)) / 2;
+            return {
+                x: humanAvgScore,
+                y: llmAvgScore,
+                id: ev.id,
+                context: `${ev.titleA} vs ${ev.titleB}`
+            };
+        });
+        
+        const disparityScorePoints = completedEvals.map(ev => {
+            const humanDisparity = calculateDisparityScore(ev.humanScores.disparity);
+            const llmDisparity = calculateDisparityScore(ev.llmScores!.disparity);
+            return {
+                x: humanDisparity,
+                y: llmDisparity,
+                id: ev.id,
+                context: `${ev.titleA} vs ${ev.titleB}`
+            };
+        });
+        
+        return {
+            combinedScores: {
+                points: combinedScorePoints,
+                maxVal: 5, // Scores are averaged from 1-5
+            },
+            disparityScores: {
+                points: disparityScorePoints,
+                maxVal: DISPARITY_CRITERIA.length,
+            }
+        };
+
+    }, [filteredEvaluations]);
 
 
     const handleDisparityBarClick = (label: string, category: 'yes' | 'no' | 'unsure', source: 'human' | 'llm') => {
@@ -1055,27 +1082,39 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         <StackedBarChart humanData={disparityChartData.human} llmData={disparityChartData.llm} onBarClick={handleDisparityBarClick} />
                     </DashboardCard>
 
-                    <DashboardCard 
-                        title="Human vs LLM Comparison"
-                        subtitle="A comparison of scores from a static analysis report. It plots human evaluator scores (X-axis) against LLM judge scores (Y-axis) for key contexts. Points on the red dashed line indicate perfect agreement."
-                    >
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <ScoreScatterPlot 
-                                points={humanVsLlmComparisonData.combinedScores.points}
-                                xLabel="Human Evaluator Scores"
-                                yLabel="LLM Evaluator Scores"
-                                title="Combined Quality Score Comparison"
-                                maxVal={humanVsLlmComparisonData.combinedScores.maxVal}
-                            />
-                            <ScoreScatterPlot 
-                                points={humanVsLlmComparisonData.disparityScores.points}
-                                xLabel="Human Evaluator Scores"
-                                yLabel="LLM Evaluator Scores"
-                                title="Disparity Score Comparison"
-                                maxVal={humanVsLlmComparisonData.disparityScores.maxVal}
-                            />
-                        </div>
-                    </DashboardCard>
+                    {dynamicHumanVsLlmData ? (
+                        <DashboardCard 
+                            title="Human vs LLM Comparison"
+                            subtitle={`Plots Human scores (X-axis) vs. LLM scores (Y-axis) for the ${dynamicHumanVsLlmData.combinedScores.points.length} filtered evaluations with completed LLM analysis. Points on the red line indicate perfect agreement. Quality scores range from 1-5; Disparity is a count of issues from 0-${DISPARITY_CRITERIA.length}.`}
+                        >
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <ScoreScatterPlot 
+                                    points={dynamicHumanVsLlmData.combinedScores.points}
+                                    xLabel="Human Evaluator Scores"
+                                    yLabel="LLM Evaluator Scores"
+                                    title="Combined Quality Score Comparison"
+                                    maxVal={dynamicHumanVsLlmData.combinedScores.maxVal + 0.5}
+                                />
+                                <ScoreScatterPlot 
+                                    points={dynamicHumanVsLlmData.disparityScores.points}
+                                    xLabel="Human Evaluator Scores"
+                                    yLabel="LLM Evaluator Scores"
+                                    title="Disparity Score Comparison"
+                                    maxVal={dynamicHumanVsLlmData.disparityScores.maxVal + 0.5}
+                                />
+                            </div>
+                        </DashboardCard>
+                    ) : (
+                        <DashboardCard 
+                            title="Human vs LLM Comparison"
+                            subtitle="This chart will appear when there are evaluations with completed LLM analysis."
+                        >
+                            <div className="text-center py-10 text-muted-foreground italic">
+                                Not enough data to generate comparison plots for the current filter.
+                            </div>
+                        </DashboardCard>
+                    )}
+
 
                     {agreementMetrics && (
                          <DashboardCard 
