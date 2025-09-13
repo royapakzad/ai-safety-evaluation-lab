@@ -427,6 +427,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const [drilldownData, setDrilldownData] = useState<{ title: string; evaluations: ReasoningEvaluationRecord[] } | null>(null);
     const [selectedLanguagePair, setSelectedLanguagePair] = useState<string>('All');
     const [selectedModel, setSelectedModel] = useState<string>('All');
+    const [contextSortBy, setContextSortBy] = useState<'english' | 'native' | 'disparity'>('disparity');
+    const [topNContexts, setTopNContexts] = useState<number>(5);
+
 
     const languagePairs = useMemo(() => {
         const pairs = new Set(evaluations.map(e => e.languagePair).filter(lang => lang && lang !== 'English - English'));
@@ -521,6 +524,63 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             ],
         };
     }, [filteredEvaluations]);
+
+    const calculateOverallScore = (scores: LanguageSpecificRubricScores | LlmRubricScores): number => {
+        const dimensionKeys = RUBRIC_DIMENSIONS.map(d => d.key);
+        if (dimensionKeys.length === 0) return 0;
+        const totalScore = dimensionKeys.reduce((acc, key) => {
+            if (key in scores) {
+                return acc + getNumericScore(key, scores);
+            }
+            return acc;
+        }, 0);
+        return totalScore / dimensionKeys.length;
+    };
+
+    const contextAnalysisData = useMemo(() => {
+        if (filteredEvaluations.length === 0) return null;
+
+        const contextMap = new Map<string, { englishScores: number[], nativeScores: number[], disparities: number[], evaluations: ReasoningEvaluationRecord[] }>();
+        
+        filteredEvaluations.forEach(ev => {
+            if (!ev.scenarioContext || !ev.humanScores) return;
+            const context = ev.scenarioContext.trim();
+            if (!contextMap.has(context)) {
+                contextMap.set(context, { englishScores: [], nativeScores: [], disparities: [], evaluations: [] });
+            }
+            
+            const data = contextMap.get(context)!;
+            const engScore = calculateOverallScore(ev.humanScores.english);
+            const natScore = calculateOverallScore(ev.humanScores.native);
+            
+            data.englishScores.push(engScore);
+            data.nativeScores.push(natScore);
+            data.disparities.push(Math.abs(engScore - natScore));
+            data.evaluations.push(ev);
+        });
+
+        const processedData = Array.from(contextMap.entries()).map(([context, data]) => {
+            const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+            const count = data.englishScores.length;
+            return {
+                context,
+                avgEnglish: count > 0 ? sum(data.englishScores) / count : 0,
+                avgNative: count > 0 ? sum(data.nativeScores) / count : 0,
+                avgDisparity: count > 0 ? sum(data.disparities) / count : 0,
+                count,
+                evaluations: data.evaluations
+            };
+        });
+        
+        processedData.sort((a, b) => {
+            if (contextSortBy === 'english') return a.avgEnglish - b.avgEnglish;
+            if (contextSortBy === 'native') return a.avgNative - b.avgNative;
+            return b.avgDisparity - a.avgDisparity;
+        });
+
+        return processedData.slice(0, topNContexts);
+    }, [filteredEvaluations, contextSortBy, topNContexts]);
+
 
     const heatmapData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
@@ -849,16 +909,14 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 </div>
             ) : (
                 <>
-                    <DashboardCard title="Key Metrics" subtitle="A high-level overview of the filtered evaluation data.">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <StatCard label="Total Evaluations" value={metrics.totalEvaluations} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M10.75 2.75a.75.75 0 00-1.5 0v14.5a.75.75 0 001.5 0V2.75z" /><path d="M3.5 10a.75.75 0 01.75-.75h11.5a.75.75 0 010 1.5H4.25A.75.75 0 013.5 10z" /></svg>} />
-                            <StatCard label="Unique Scenarios" value={metrics.uniqueScenarios} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>} />
-                            <StatCard label="Models Tested" value={metrics.modelsTested} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path fillRule="evenodd" d="M11.624 3.322a4.5 4.5 0 10-7.248 5.044l-2.008 5.02a.75.75 0 00.933 1.054l5.02-2.008a4.5 4.5 0 103.303-9.11zM13 4.5a3 3 0 11-6 0 3 3 0 016 0z" clipRule="evenodd" /></svg>} />
-                        </div>
-                    </DashboardCard>
-
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <DashboardCard title="Average Performance" subtitle="Comparing output metrics between English and native language responses.">
+                        <DashboardCard title="Key Metrics" subtitle="A high-level overview of the filtered evaluation data.">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <StatCard label="Total Evaluations" value={metrics.totalEvaluations} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M10.75 2.75a.75.75 0 00-1.5 0v14.5a.75.75 0 001.5 0V2.75z" /><path d="M3.5 10a.75.75 0 01.75-.75h11.5a.75.75 0 010 1.5H4.25A.75.75 0 013.5 10z" /></svg>} />
+                                <StatCard label="Unique Scenarios" value={metrics.uniqueScenarios} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>} />
+                            </div>
+                        </DashboardCard>
+                         <DashboardCard title="Average Performance" subtitle="Comparing output metrics between English and native language responses.">
                              <div className="flex justify-end items-center gap-4 text-xs mb-4">
                                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500"></span><span>English</span></div>
                                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-violet-400"></span><span>Native Language</span></div>
@@ -870,15 +928,51 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                 { label: 'Reasoning Words', valueA: metrics.avgReasoningWordsA, valueB: metrics.avgReasoningWordsB, unit: '' },
                             ]} />
                         </DashboardCard>
-                        <DashboardCard 
-                            title="Harm Assessment Scores (Human Scores)" 
-                            subtitle="Average human scores across core rubric dimensions (1=Worst, 5=Best). Click a radar label to see low-scoring evaluations for that dimension."
-                        >
-                            <div className="flex items-center justify-center pt-2">
-                                <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
+                    </div>
+
+                    {contextAnalysisData && contextAnalysisData.length > 0 && (
+                        <DashboardCard title="Context Analysis" subtitle={`Showing Top ${topNContexts} problematic contexts sorted by ${contextSortBy}. Click a context to see its evaluations.`}>
+                            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                                <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
+                                    {(['disparity', 'english', 'native'] as const).map(sortBy => (
+                                        <button key={sortBy} onClick={() => setContextSortBy(sortBy)} className={`px-3 py-1.5 rounded-md transition-colors ${contextSortBy === sortBy ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>
+                                            {sortBy === 'disparity' ? 'Highest Disparity' : sortBy === 'english' ? 'Worst English' : 'Worst Native'}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                    <label htmlFor="top-n-select" className="text-muted-foreground">Show:</label>
+                                    <select id="top-n-select" value={topNContexts} onChange={e => setTopNContexts(Number(e.target.value))} className="form-select bg-card border-border rounded-md p-1.5 focus:ring-2 focus:ring-ring">
+                                        <option value={3}>Top 3</option>
+                                        <option value={5}>Top 5</option>
+                                        <option value={10}>Top 10</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                {contextAnalysisData.map((data, index) => (
+                                    <button key={index} onClick={() => setDrilldownData({title: `Evaluations for Context: "${data.context}"`, evaluations: data.evaluations})} className="w-full text-left p-3 bg-background rounded-lg border border-border/70 hover:bg-muted/60 transition-colors">
+                                        <p className="font-semibold text-foreground truncate">{data.context}</p>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1 font-mono">
+                                            <span>Avg Eng: <span className="font-bold text-blue-500">{data.avgEnglish.toFixed(2)}</span></span>
+                                            <span>Avg Nat: <span className="font-bold text-violet-400">{data.avgNative.toFixed(2)}</span></span>
+                                            <span>Avg Disp: <span className="font-bold text-orange-500">{data.avgDisparity.toFixed(2)}</span></span>
+                                            <span className="text-foreground/60">(n={data.count})</span>
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
                         </DashboardCard>
-                    </div>
+                    )}
+
+                    <DashboardCard 
+                        title="Harm Assessment Scores (Human Scores)" 
+                        subtitle="Average human scores across core rubric dimensions (1=Worst, 5=Best). Click a radar label to see low-scoring evaluations for that dimension."
+                    >
+                        <div className="flex items-center justify-center pt-2">
+                            <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
+                        </div>
+                    </DashboardCard>
                     
                     {heatmapData && (
                         <DashboardCard 
