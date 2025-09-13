@@ -353,7 +353,7 @@ const GroupedBarChart: React.FC<{
                                     <div key={modelId} className="flex items-center gap-2.5 group">
                                         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }}></div>
                                         <div className="flex-grow bg-muted rounded h-3 relative">
-                                            <div className="h-3 rounded transition-all duration-300" style={{ width: `${widthPercent}%`, backgroundColor: color }}></div>
+                                            <div className="h-3 rounded transition-all duration-300" style={{ backgroundColor: color }}></div>
                                              <span className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white px-1.5 py-0.5 rounded text-[10px] font-semibold transition-opacity duration-200 opacity-0 group-hover:opacity-100 pointer-events-none">{value.toFixed(2)}{unit}</span>
                                         </div>
                                     </div>
@@ -426,7 +426,7 @@ const ScoreScatterPlot: React.FC<{
 }> = ({ points, xLabel, yLabel, title, maxVal }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
     const size = 350;
-    const padding = 45; // increased padding for labels
+    const padding = 45;
     const plotSize = size - padding * 2;
 
     const xScale = (val: number) => padding + (val / maxVal) * plotSize;
@@ -437,57 +437,58 @@ const ScoreScatterPlot: React.FC<{
     }
 
     return (
-        <div className="relative flex flex-col items-center bg-background p-3 rounded-lg border border-border/60">
+        <div className="relative flex flex-col items-center bg-card p-4 rounded-xl border border-border">
             <h5 className="font-semibold text-foreground text-center mb-3 text-sm">{title}</h5>
-            <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`}>
-                {/* Background and Grid */}
-                <rect x={padding} y={padding} width={plotSize} height={plotSize} className="fill-muted/30" />
-                
-                {/* Ticks and Grid Lines */}
+            <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`} className="font-sans">
+                {/* Grid Lines */}
                 {[...Array(Math.ceil(maxVal * 10) + 1)].map((_, i) => {
                     const val = i / 10;
-                     if (val > maxVal) return null;
+                    if (val > maxVal) return null;
                     const tickInterval = maxVal <= 1 ? 0.2 : (maxVal <= 10 ? 1 : Math.ceil(maxVal / 5));
                     if (val !== 0 && val !== maxVal && val % tickInterval !== 0 && Math.abs(val - Math.round(val)) > 0.01) return null;
 
                     const x = xScale(val);
                     const y = yScale(val);
-                    return <g key={i} className="fill-muted-foreground text-[10px]">
-                        {/* Grid lines */}
-                        <line x1={x} y1={padding} x2={x} y2={size-padding} className="stroke-border/70" strokeDasharray="2" />
-                        <line x1={padding} y1={y} x2={size-padding} y2={y} className="stroke-border/70" strokeDasharray="2" />
-
-                        {/* Ticks */}
-                        <line x1={x} y1={size-padding} x2={x} y2={size-padding+5} className="stroke-border"/>
-                        <text x={x} y={size-padding+15} textAnchor="middle">{val}</text>
-                        <line x1={padding-5} y1={y} x2={padding} y2={y} className="stroke-border"/>
-                        <text x={padding-10} y={y} textAnchor="end" dominantBaseline="middle">{val}</text>
+                    
+                    return <g key={i} className="text-muted-foreground text-[10px]">
+                        <line x1={x} y1={padding} x2={x} y2={size - padding} className="stroke-border" strokeDasharray="2" />
+                        <line x1={padding} y1={y} x2={size - padding} y2={y} className="stroke-border" strokeDasharray="2" />
+                        
+                        <text x={x} y={size - padding + 15} textAnchor="middle" fill="currentColor">{val}</text>
+                        <text x={padding - 10} y={y} textAnchor="end" dominantBaseline="middle" fill="currentColor">{val}</text>
                     </g>
                 })}
 
-                {/* Axes */}
-                <line x1={padding} y1={size - padding} x2={size - padding} y2={size - padding} className="stroke-foreground/50" />
+                {/* Axes Lines */}
                 <line x1={padding} y1={padding} x2={padding} y2={size - padding} className="stroke-foreground/50" />
-
+                <line x1={padding} y1={size - padding} x2={size - padding} y2={size - padding} className="stroke-foreground/50" />
+                
                 {/* Diagonal Line of Perfect Agreement */}
-                <line x1={padding} y1={size - padding} x2={size - padding} y2={padding} stroke="var(--color-destructive)" strokeDasharray="4" />
+                <line x1={padding} y1={size - padding} x2={size - padding} y2={padding} stroke="var(--color-destructive)" strokeWidth="1.5" strokeDasharray="4" />
 
                 {/* Points */}
                 {points.map(p => (
-                    <circle 
-                        key={p.id} 
-                        cx={xScale(p.x)} 
-                        cy={yScale(p.y)} 
-                        r="6" 
-                        className="fill-transparent stroke-primary stroke-[3px] cursor-pointer transition-transform duration-200 hover:scale-125"
-                        onMouseEnter={() => setTooltip({ x: xScale(p.x), y: yScale(p.y) - 10, text: p.context })}
-                        onMouseLeave={() => setTooltip(null)}
-                    />
+                    <g key={p.id}>
+                        <circle 
+                            cx={xScale(p.x)} 
+                            cy={yScale(p.y)} 
+                            r="5" 
+                            className="fill-transparent stroke-primary stroke-2"
+                        />
+                         <circle // Invisible hover target for easier interaction
+                            cx={xScale(p.x)}
+                            cy={yScale(p.y)}
+                            r="10" 
+                            className="fill-transparent cursor-pointer"
+                            onMouseEnter={() => setTooltip({ x: xScale(p.x), y: yScale(p.y) - 10, text: p.context })}
+                            onMouseLeave={() => setTooltip(null)}
+                        />
+                    </g>
                 ))}
 
                 {/* Labels */}
-                <text x={size/2} y={size-10} textAnchor="middle" className="text-xs fill-foreground font-medium">{xLabel}</text>
-                <text x={15} y={size/2} textAnchor="middle" className="text-xs fill-foreground font-medium" transform={`rotate(-90, 15, ${size/2})`}>{yLabel}</text>
+                <text x={size / 2} y={size - 10} textAnchor="middle" className="text-xs text-foreground font-medium" fill="currentColor">{xLabel}</text>
+                <text x={15} y={size / 2} textAnchor="middle" className="text-xs text-foreground font-medium" transform={`rotate(-90, 15, ${size/2})`} fill="currentColor">{yLabel}</text>
             </svg>
              {tooltip && (
                 <div
