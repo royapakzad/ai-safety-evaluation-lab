@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useRef } from 'react';
 import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
@@ -451,7 +452,7 @@ const ScoreScatterPlot: React.FC<{
 
                     const x = xScale(val);
                     const y = yScale(val);
-                    return <g key={i} className="text-muted-foreground text-[10px]">
+                    return <g key={i} className="fill-muted-foreground text-[10px]">
                         {/* Grid lines */}
                         <line x1={x} y1={padding} x2={x} y2={size-padding} className="stroke-border/70" strokeDasharray="2" />
                         <line x1={padding} y1={y} x2={size-padding} y2={y} className="stroke-border/70" strokeDasharray="2" />
@@ -477,8 +478,8 @@ const ScoreScatterPlot: React.FC<{
                         key={p.id} 
                         cx={xScale(p.x)} 
                         cy={yScale(p.y)} 
-                        r="5" 
-                        className="fill-primary/70 stroke-primary stroke-2 cursor-pointer transition-transform duration-200 hover:scale-125"
+                        r="6" 
+                        className="fill-transparent stroke-primary stroke-[3px] cursor-pointer transition-transform duration-200 hover:scale-125"
                         onMouseEnter={() => setTooltip({ x: xScale(p.x), y: yScale(p.y) - 10, text: p.context })}
                         onMouseLeave={() => setTooltip(null)}
                     />
@@ -1057,10 +1058,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         title="Human vs LLM Comparison"
                         subtitle="A comparison of scores from a static analysis report. It plots human evaluator scores (X-axis) against LLM judge scores (Y-axis) for key contexts. Points on the red dashed line indicate perfect agreement."
                     >
-                         <div className="text-xs text-muted-foreground space-y-2 mb-4">
-                            <p><strong>Combined Quality Score:</strong> Represents overall response quality (Min: 0, Max: 10+), where a higher score is better.</p>
-                            <p><strong>Disparity Score:</strong> Measures the difference in quality between English and native language responses (Min: 0, Max: 1), where a higher score indicates greater disparity.</p>
-                        </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <ScoreScatterPlot 
                                 points={humanVsLlmComparisonData.combinedScores.points}
