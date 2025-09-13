@@ -425,7 +425,7 @@ const ScoreScatterPlot: React.FC<{
 }> = ({ points, xLabel, yLabel, title, maxVal }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
     const size = 350;
-    const padding = 40;
+    const padding = 45; // increased padding for labels
     const plotSize = size - padding * 2;
 
     const xScale = (val: number) => padding + (val / maxVal) * plotSize;
@@ -436,30 +436,37 @@ const ScoreScatterPlot: React.FC<{
     }
 
     return (
-        <div className="relative flex flex-col items-center">
-            <h5 className="font-semibold text-foreground text-center mb-2 text-sm">{title}</h5>
+        <div className="relative flex flex-col items-center bg-background p-3 rounded-lg border border-border/60">
+            <h5 className="font-semibold text-foreground text-center mb-3 text-sm">{title}</h5>
             <svg width="100%" height="auto" viewBox={`0 0 ${size} ${size}`}>
-                {/* Axes */}
-                <line x1={padding} y1={size - padding} x2={size - padding} y2={size - padding} stroke="var(--color-border)" />
-                <line x1={padding} y1={padding} x2={padding} y2={size - padding} stroke="var(--color-border)" />
+                {/* Background and Grid */}
+                <rect x={padding} y={padding} width={plotSize} height={plotSize} className="fill-muted/30" />
                 
-                {/* Ticks */}
+                {/* Ticks and Grid Lines */}
                 {[...Array(Math.ceil(maxVal * 10) + 1)].map((_, i) => {
                     const val = i / 10;
                      if (val > maxVal) return null;
-                    const tickInterval = maxVal <= 1 ? 0.1 : (maxVal <= 10 ? 1 : Math.ceil(maxVal / 5));
-                    // A bit of logic to not overcrowd ticks
+                    const tickInterval = maxVal <= 1 ? 0.2 : (maxVal <= 10 ? 1 : Math.ceil(maxVal / 5));
                     if (val !== 0 && val !== maxVal && val % tickInterval !== 0 && Math.abs(val - Math.round(val)) > 0.01) return null;
 
                     const x = xScale(val);
                     const y = yScale(val);
-                    return <g key={i}>
-                        <line x1={x} y1={size-padding} x2={x} y2={size-padding+5} stroke="var(--color-border)"/>
-                        <text x={x} y={size-padding+15} textAnchor="middle" fontSize="10" className="fill-muted-foreground">{val}</text>
-                        <line x1={padding-5} y1={y} x2={padding} y2={y} stroke="var(--color-border)"/>
-                        <text x={padding-10} y={y} textAnchor="end" dominantBaseline="middle" fontSize="10" className="fill-muted-foreground">{val}</text>
+                    return <g key={i} className="text-muted-foreground text-[10px]">
+                        {/* Grid lines */}
+                        <line x1={x} y1={padding} x2={x} y2={size-padding} className="stroke-border/70" strokeDasharray="2" />
+                        <line x1={padding} y1={y} x2={size-padding} y2={y} className="stroke-border/70" strokeDasharray="2" />
+
+                        {/* Ticks */}
+                        <line x1={x} y1={size-padding} x2={x} y2={size-padding+5} className="stroke-border"/>
+                        <text x={x} y={size-padding+15} textAnchor="middle">{val}</text>
+                        <line x1={padding-5} y1={y} x2={padding} y2={y} className="stroke-border"/>
+                        <text x={padding-10} y={y} textAnchor="end" dominantBaseline="middle">{val}</text>
                     </g>
                 })}
+
+                {/* Axes */}
+                <line x1={padding} y1={size - padding} x2={size - padding} y2={size - padding} className="stroke-foreground/50" />
+                <line x1={padding} y1={padding} x2={padding} y2={size - padding} className="stroke-foreground/50" />
 
                 {/* Diagonal Line of Perfect Agreement */}
                 <line x1={padding} y1={size - padding} x2={size - padding} y2={padding} stroke="var(--color-destructive)" strokeDasharray="4" />
@@ -471,15 +478,15 @@ const ScoreScatterPlot: React.FC<{
                         cx={xScale(p.x)} 
                         cy={yScale(p.y)} 
                         r="5" 
-                        className="fill-primary/60 stroke-primary cursor-pointer"
+                        className="fill-primary/70 stroke-primary stroke-2 cursor-pointer transition-transform duration-200 hover:scale-125"
                         onMouseEnter={() => setTooltip({ x: xScale(p.x), y: yScale(p.y) - 10, text: p.context })}
                         onMouseLeave={() => setTooltip(null)}
                     />
                 ))}
 
                 {/* Labels */}
-                <text x={size/2} y={size-5} textAnchor="middle" fontSize="12" className="fill-foreground font-medium">{xLabel}</text>
-                <text x={15} y={size/2} textAnchor="middle" fontSize="12" className="fill-foreground font-medium" transform={`rotate(-90, 15, ${size/2})`}>{yLabel}</text>
+                <text x={size/2} y={size-10} textAnchor="middle" className="text-xs fill-foreground font-medium">{xLabel}</text>
+                <text x={15} y={size/2} textAnchor="middle" className="text-xs fill-foreground font-medium" transform={`rotate(-90, 15, ${size/2})`}>{yLabel}</text>
             </svg>
              {tooltip && (
                 <div
@@ -1047,22 +1054,26 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     </DashboardCard>
 
                     <DashboardCard 
-                        title="Human vs LLM Comparison (from Analysis Report)"
-                        subtitle="Compares scores between human evaluators and an LLM judge on key contexts."
+                        title="Human vs LLM Comparison"
+                        subtitle="A comparison of scores from a static analysis report. It plots human evaluator scores (X-axis) against LLM judge scores (Y-axis) for key contexts. Points on the red dashed line indicate perfect agreement."
                     >
+                         <div className="text-xs text-muted-foreground space-y-2 mb-4">
+                            <p><strong>Combined Quality Score:</strong> Represents overall response quality (Min: 0, Max: 10+), where a higher score is better.</p>
+                            <p><strong>Disparity Score:</strong> Measures the difference in quality between English and native language responses (Min: 0, Max: 1), where a higher score indicates greater disparity.</p>
+                        </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <ScoreScatterPlot 
                                 points={humanVsLlmComparisonData.combinedScores.points}
-                                xLabel="Human Evaluator Combined Scores"
-                                yLabel="LLM Evaluator Combined Scores"
-                                title="Combined Score Comparison (Lower is worse)"
+                                xLabel="Human Evaluator Scores"
+                                yLabel="LLM Evaluator Scores"
+                                title="Combined Quality Score Comparison"
                                 maxVal={humanVsLlmComparisonData.combinedScores.maxVal}
                             />
                             <ScoreScatterPlot 
                                 points={humanVsLlmComparisonData.disparityScores.points}
-                                xLabel="Human Evaluator Disparity Scores"
-                                yLabel="LLM Evaluator Disparity Scores"
-                                title="Disparity Score Comparison (Higher is more disparity)"
+                                xLabel="Human Evaluator Scores"
+                                yLabel="LLM Evaluator Scores"
+                                title="Disparity Score Comparison"
                                 maxVal={humanVsLlmComparisonData.disparityScores.maxVal}
                             />
                         </div>
