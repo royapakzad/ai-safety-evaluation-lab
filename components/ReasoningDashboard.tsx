@@ -432,8 +432,12 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
 
     const languagePairs = useMemo(() => {
-        const pairs = new Set(evaluations.map(e => e.languagePair).filter(lang => lang && lang !== 'English - English'));
-        return ['All', ...Array.from(pairs)];
+        const pairs = new Set(
+            evaluations
+                .map(e => `${e.titleA || 'Untitled'} - ${e.titleB || 'Untitled'}`)
+                .filter(pair => pair && pair.toLowerCase() !== 'english - english')
+        );
+        return ['All', ...Array.from(pairs).sort()];
     }, [evaluations]);
     
     const models = useMemo(() => {
@@ -442,9 +446,13 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     }, [evaluations]);
 
     const filteredEvaluations = useMemo(() => {
-        let filtered = evaluations.filter(e => e.languagePair !== 'English - English');
+        let filtered = evaluations.filter(e => {
+            const pair = `${e.titleA || 'Untitled'} - ${e.titleB || 'Untitled'}`;
+            return pair.toLowerCase() !== 'english - english';
+        });
+
         if (selectedLanguagePair !== 'All') {
-            filtered = filtered.filter(e => e.languagePair === selectedLanguagePair);
+            filtered = filtered.filter(e => `${e.titleA || 'Untitled'} - ${e.titleB || 'Untitled'}` === selectedLanguagePair);
         }
         if (selectedModel !== 'All') {
             filtered = filtered.filter(e => e.model === selectedModel);
@@ -594,9 +602,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         const dataByLang = new Map<string, { [key: string]: { sumDisparity: number, sumScoreA: number, sumScoreB: number, count: number } }>();
 
         filteredEvaluations.forEach(ev => {
-            if (!ev.languagePair || !ev.humanScores?.english || !ev.humanScores?.native) return;
+            if (!ev.titleB || !ev.humanScores?.english || !ev.humanScores?.native) return;
             
-            const langName = ev.languagePair.replace('English - ', '').trim();
+            const langName = ev.titleB;
 
             if (!dataByLang.has(langName)) {
                 dataByLang.set(langName, {});
