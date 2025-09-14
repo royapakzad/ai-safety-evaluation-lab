@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
@@ -417,71 +418,73 @@ const CompactPerformanceChart: React.FC<{
 };
 
 const ContextScatterPlot: React.FC<{
-    humanData: { context: string; avgEnglish: number; avgNative: number; avgDisparity: number; }[];
-    llmData: { context: string; avgEnglish: number; avgNative: number; avgDisparity: number; }[];
-    sortBy: 'disparity' | 'english' | 'native';
-}> = ({ humanData, llmData, sortBy }) => {
+    data: { context: string; humanValue: number; llmValue: number }[];
+    title: string;
+    domainMax: number;
+    topDisparityContexts: Set<string>;
+}> = ({ data, title, domainMax, topDisparityContexts }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string, human: number, llm: number } | null>(null);
-    const getValue = (item: any, sortKey: typeof sortBy) => {
-        if (sortKey === 'disparity') return item.avgDisparity;
-        if (sortKey === 'english') return item.avgEnglish;
-        return item.avgNative;
-    };
-    const mergedData = useMemo(() => {
-        return humanData.map(h => {
-            const l = llmData.find(l => l.context === h.context);
-            if (!l) return null;
-            return {
-                context: h.context,
-                humanValue: getValue(h, sortBy),
-                llmValue: getValue(l, sortBy),
-            };
-        }).filter((d): d is { context: string; humanValue: number; llmValue: number; } => d !== null);
-    }, [humanData, llmData, sortBy]);
 
-    const size = 450;
-    const padding = 50;
-    const domainMax = sortBy === 'disparity' ? 4 : 5;
+    const size = 350;
+    const padding = 40;
+    const midPoint = domainMax / 2;
+
     const scale = (val: number) => padding + (val / domainMax) * (size - 2 * padding);
     const scaleY = (val: number) => (size - padding) - (val / domainMax) * (size - 2 * padding);
 
-    if (mergedData.length === 0) {
-        return <p className="text-center text-muted-foreground italic py-8">No overlapping context data between Human and LLM evaluations to display.</p>
+    if (data.length === 0) {
+        return <p className="text-center text-muted-foreground italic py-8">No overlapping context data to display.</p>
     }
 
     return (
         <div className="relative flex flex-col items-center">
+            <h4 className="font-semibold text-foreground mb-2 text-sm text-center">{title}</h4>
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                {/* Quadrant Backgrounds and Labels */}
+                <g className="text-[9px] fill-muted-foreground opacity-60">
+                    <rect x={scale(midPoint)} y={padding} width={scale(domainMax) - scale(midPoint)} height={scaleY(midPoint)-padding} fill="var(--color-background)" />
+                    <text x={scale(midPoint + domainMax/4)} y={padding + 10} textAnchor="middle">High Agreement (Good Scores)</text>
+
+                    <rect x={padding} y={padding} width={scale(midPoint) - padding} height={scaleY(midPoint) - padding} fill="var(--color-muted)" />
+                    <text x={scale(midPoint/2)} y={padding + 10} textAnchor="middle">Disagreement (LLM Overestimates)</text>
+
+                    <rect x={padding} y={scaleY(midPoint)} width={scale(midPoint) - padding} height={size - padding - scaleY(midPoint)} fill="var(--color-background)" />
+                    <text x={scale(midPoint/2)} y={size - padding - 10} textAnchor="middle">High Agreement (Bad Scores)</text>
+
+                    <rect x={scale(midPoint)} y={scaleY(midPoint)} width={scale(domainMax) - scale(midPoint)} height={size - padding - scaleY(midPoint)} fill="var(--color-muted)" />
+                    <text x={scale(midPoint + domainMax/4)} y={size - padding - 10} textAnchor="middle">Disagreement (LLM Underestimates)</text>
+                </g>
+
                 {/* Axes and Grid */}
                 {[...Array(domainMax + 1)].map((_, i) => {
                     const pos = scale(i);
                     const posY = scaleY(i);
                     return (
                         <g key={i} className="text-muted-foreground text-[10px]">
-                            {/* Horizontal grid line */}
                             <line x1={padding} y1={posY} x2={size - padding} y2={posY} stroke="var(--color-border)" strokeDasharray="2,2" />
                             <text x={padding - 8} y={posY} textAnchor="end" dominantBaseline="middle">{i}</text>
-                            {/* Vertical grid line */}
                             <line x1={pos} y1={padding} x2={pos} y2={size - padding} stroke="var(--color-border)" strokeDasharray="2,2" />
                             <text x={pos} y={size - padding + 15} textAnchor="middle">{i}</text>
                         </g>
                     );
                 })}
-                 <text x={size/2} y={size - 10} textAnchor="middle" className="font-semibold fill-foreground text-sm">👤 Human Score</text>
-                 <text x={15} y={size/2} textAnchor="middle" transform={`rotate(-90, 15, ${size/2})`} className="font-semibold fill-foreground text-sm">🤖 LLM Score</text>
+                 <text x={size/2} y={size - 5} textAnchor="middle" className="font-semibold fill-foreground text-xs">👤 Human Score</text>
+                 <text x={10} y={size/2} textAnchor="middle" transform={`rotate(-90, 10, ${size/2})`} className="font-semibold fill-foreground text-xs">🤖 LLM Score</text>
 
                 {/* Line of Perfect Agreement */}
                 <line x1={padding} y1={size - padding} x2={size - padding} y2={padding} stroke="var(--color-accent)" strokeWidth="1" strokeDasharray="4,4" />
                 
                 {/* Data Points */}
-                {mergedData.map((d, i) => (
+                {data.map((d, i) => {
+                    const isTopDisparity = topDisparityContexts.has(d.context);
+                    return (
                     <circle
                         key={i}
                         cx={scale(d.humanValue)}
                         cy={scaleY(d.llmValue)}
-                        r="5"
-                        fill="var(--color-primary)"
-                        fillOpacity="0.7"
+                        r={isTopDisparity ? 6 : 4}
+                        fill={isTopDisparity ? 'var(--color-destructive)' : 'var(--color-primary)'}
+                        fillOpacity="0.8"
                         stroke="var(--color-primary-foreground)"
                         strokeWidth="1"
                         className="cursor-pointer transition-all duration-150 hover:r-7 hover:fill-primary-hover"
@@ -492,7 +495,7 @@ const ContextScatterPlot: React.FC<{
                         }}
                         onMouseLeave={() => setTooltip(null)}
                     />
-                ))}
+                )})}
             </svg>
              {tooltip && (
                 <div
@@ -638,8 +641,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         return totalScore / dimensionKeys.length;
     };
 
-    const contextAnalysisData = useMemo(() => {
-        if (filteredEvaluations.length === 0) return null;
+    const { contextAnalysisData, top5DisparateContexts } = useMemo(() => {
+        // FIX: Explicitly type the empty Set to avoid type inference issues.
+        if (filteredEvaluations.length === 0) return { contextAnalysisData: null, top5DisparateContexts: new Set<string>() };
 
         const contextMap = new Map<string, { englishScores: number[], nativeScores: number[], disparities: number[], evaluations: ReasoningEvaluationRecord[] }>();
         
@@ -673,13 +677,18 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             };
         });
         
+        const sortedByDisparity = [...processedData].sort((a,b) => b.avgDisparity - a.avgDisparity);
+
         processedData.sort((a, b) => {
             if (contextSortBy === 'english') return a.avgEnglish - b.avgEnglish;
             if (contextSortBy === 'native') return a.avgNative - b.avgNative;
             return b.avgDisparity - a.avgDisparity;
         });
 
-        return processedData
+        return {
+            contextAnalysisData: processedData,
+            top5DisparateContexts: new Set(sortedByDisparity.slice(0, 5).map(d => d.context))
+        };
     }, [filteredEvaluations, contextSortBy]);
     
     const llmContextAnalysisData = useMemo(() => {
@@ -967,6 +976,26 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         };
     }, [filteredEvaluations]);
 
+    const mergedContextDataForPlots = useMemo(() => {
+        if (!contextAnalysisData || !llmContextAnalysisData) {
+            return null;
+        }
+
+        const createMergedList = (getValue: (item: any) => number) => 
+            contextAnalysisData.map(h => {
+                const l = llmContextAnalysisData.find(l => l.context === h.context);
+                if (!l) return null;
+                return { context: h.context, humanValue: getValue(h), llmValue: getValue(l) };
+            }).filter((d): d is { context: string; humanValue: number; llmValue: number } => d !== null);
+        
+        return {
+            disparity: createMergedList(item => item.avgDisparity),
+            english: createMergedList(item => item.avgEnglish),
+            native: createMergedList(item => item.avgNative),
+        };
+
+    }, [contextAnalysisData, llmContextAnalysisData]);
+
 
     const handleDisparityBarClick = (label: string, category: 'yes' | 'no' | 'unsure', source: 'human' | 'llm') => {
         const crit = DISPARITY_CRITERIA.find(c => c.label === label);
@@ -1189,15 +1218,24 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                                <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
                                     <button onClick={() => setContextView('list')} className={`px-3 py-1.5 rounded-md transition-colors ${contextView === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>List View</button>
-                                    <button onClick={() => setContextView('plot')} className={`px-3 py-1.5 rounded-md transition-colors ${contextView === 'plot' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>Scatter Plot</button>
+                                    <button onClick={() => setContextView('plot')} className={`px-3 py-1.5 rounded-md transition-colors ${contextView === 'plot' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>Scatter Plots</button>
                                 </div>
-                                <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
-                                    {(['disparity', 'english', 'native'] as const).map(sortBy => (
-                                        <button key={sortBy} onClick={() => setContextSortBy(sortBy)} className={`px-3 py-1.5 rounded-md transition-colors ${contextSortBy === sortBy ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>
-                                            {sortBy === 'disparity' ? 'Sort by Disparity' : sortBy === 'english' ? 'Sort by English Score' : 'Sort by Native Score'}
-                                        </button>
-                                    ))}
-                                </div>
+
+                                {contextView === 'list' ? (
+                                    <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
+                                        {(['disparity', 'english', 'native'] as const).map(sortBy => (
+                                            <button key={sortBy} onClick={() => setContextSortBy(sortBy)} className={`px-3 py-1.5 rounded-md transition-colors ${contextSortBy === sortBy ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>
+                                                {sortBy === 'disparity' ? 'Sort by Disparity' : sortBy === 'english' ? 'Sort by English Score' : 'Sort by Native Score'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-4 text-xs">
+                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary"></span><span>Standard Context</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-destructive"></span><span>Top 5 Disparate</span></div>
+                                    </div>
+                                )}
+                                
                                 {contextView === 'list' && (
                                 <div className="flex items-center gap-2 text-sm">
                                     <label htmlFor="top-n-select" className="text-muted-foreground">Show:</label>
@@ -1224,8 +1262,12 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                         </button>
                                     ))}
                                 </div>
-                            ) : llmContextAnalysisData ? (
-                               <ContextScatterPlot humanData={contextAnalysisData} llmData={llmContextAnalysisData} sortBy={contextSortBy} />
+                            ) : mergedContextDataForPlots ? (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 -mt-2">
+                                    <ContextScatterPlot data={mergedContextDataForPlots.disparity} title="Disparity Comparison" domainMax={4} topDisparityContexts={top5DisparateContexts} />
+                                    <ContextScatterPlot data={mergedContextDataForPlots.english} title="English Score Comparison" domainMax={5} topDisparityContexts={top5DisparateContexts} />
+                                    <ContextScatterPlot data={mergedContextDataForPlots.native} title="Native Score Comparison" domainMax={5} topDisparityContexts={top5DisparateContexts} />
+                                </div>
                             ) : (
                                 <p className="text-center text-muted-foreground italic py-8">LLM context data is not available for the scatter plot.</p>
                             )}
