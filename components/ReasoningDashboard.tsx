@@ -420,21 +420,38 @@ const CompactPerformanceChart: React.FC<{
 const ContextScatterPlot: React.FC<{
     data: { context: string; humanValue: number; llmValue: number }[];
     title: string;
-    domainMax: number;
+    domain: [number, number];
     topDisparityContexts: Set<string>;
-}> = ({ data, title, domainMax, topDisparityContexts }) => {
+    quadrantLabels: {
+        topRight: string;
+        topLeft: string;
+        bottomLeft: string;
+        bottomRight: string;
+    };
+}> = ({ data, title, domain, topDisparityContexts, quadrantLabels }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string, human: number, llm: number } | null>(null);
 
     const size = 350;
     const padding = 40;
-    const midPoint = domainMax / 2;
+    const [domainMin, domainMax] = domain;
+    const domainRange = domainMax - domainMin;
 
-    const scale = (val: number) => padding + (val / domainMax) * (size - 2 * padding);
-    const scaleY = (val: number) => (size - padding) - (val / domainMax) * (size - 2 * padding);
+    const midPoint = domainMin + domainRange / 2;
+
+    const scale = (val: number) => {
+        if (domainRange === 0) return padding;
+        return padding + ((val - domainMin) / domainRange) * (size - 2 * padding);
+    };
+    const scaleY = (val: number) => {
+        if (domainRange === 0) return size - padding;
+        return (size - padding) - ((val - domainMin) / domainRange) * (size - 2 * padding);
+    };
 
     if (data.length === 0) {
         return <p className="text-center text-muted-foreground italic py-8">No overlapping context data to display.</p>
     }
+
+    const ticks = Array.from({ length: domainMax - domainMin + 1 }, (_, i) => i + domainMin);
 
     return (
         <div className="relative flex flex-col items-center">
@@ -442,27 +459,29 @@ const ContextScatterPlot: React.FC<{
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
                 {/* Quadrant Backgrounds and Labels */}
                 <g className="text-[9px] fill-muted-foreground opacity-60">
-                    <rect x={scale(midPoint)} y={padding} width={scale(domainMax) - scale(midPoint)} height={scaleY(midPoint)-padding} fill="var(--color-background)" />
-                    <text x={scale(midPoint + domainMax/4)} y={padding + 10} textAnchor="middle">High Agreement (Good Scores)</text>
+                    <rect x={scale(midPoint)} y={padding} width={scale(domainMax) - scale(midPoint)} height={scaleY(midPoint) - padding} fill="var(--color-background)" />
+                    <text x={scale(midPoint + domainRange / 4)} y={padding + 10} textAnchor="middle">{quadrantLabels.topRight}</text>
 
                     <rect x={padding} y={padding} width={scale(midPoint) - padding} height={scaleY(midPoint) - padding} fill="var(--color-muted)" />
-                    <text x={scale(midPoint/2)} y={padding + 10} textAnchor="middle">Disagreement (LLM Overestimates)</text>
+                    <text x={scale(midPoint - domainRange / 4)} y={padding + 10} textAnchor="middle">{quadrantLabels.topLeft}</text>
 
                     <rect x={padding} y={scaleY(midPoint)} width={scale(midPoint) - padding} height={size - padding - scaleY(midPoint)} fill="var(--color-background)" />
-                    <text x={scale(midPoint/2)} y={size - padding - 10} textAnchor="middle">High Agreement (Bad Scores)</text>
+                    <text x={scale(midPoint - domainRange / 4)} y={size - padding - 10} textAnchor="middle">{quadrantLabels.bottomLeft}</text>
 
                     <rect x={scale(midPoint)} y={scaleY(midPoint)} width={scale(domainMax) - scale(midPoint)} height={size - padding - scaleY(midPoint)} fill="var(--color-muted)" />
-                    <text x={scale(midPoint + domainMax/4)} y={size - padding - 10} textAnchor="middle">Disagreement (LLM Underestimates)</text>
+                    <text x={scale(midPoint + domainRange / 4)} y={size - padding - 10} textAnchor="middle">{quadrantLabels.bottomRight}</text>
                 </g>
 
                 {/* Axes and Grid */}
-                {[...Array(domainMax + 1)].map((_, i) => {
+                {ticks.map((i) => {
                     const pos = scale(i);
                     const posY = scaleY(i);
                     return (
                         <g key={i} className="text-muted-foreground text-[10px]">
+                            {/* Horizontal grid line */}
                             <line x1={padding} y1={posY} x2={size - padding} y2={posY} stroke="var(--color-border)" strokeDasharray="2,2" />
                             <text x={padding - 8} y={posY} textAnchor="end" dominantBaseline="middle">{i}</text>
+                            {/* Vertical grid line */}
                             <line x1={pos} y1={padding} x2={pos} y2={size - padding} stroke="var(--color-border)" strokeDasharray="2,2" />
                             <text x={pos} y={size - padding + 15} textAnchor="middle">{i}</text>
                         </g>
@@ -472,16 +491,19 @@ const ContextScatterPlot: React.FC<{
                  <text x={10} y={size/2} textAnchor="middle" transform={`rotate(-90, 10, ${size/2})`} className="font-semibold fill-foreground text-xs">🤖 LLM Score</text>
 
                 {/* Line of Perfect Agreement */}
-                <line x1={padding} y1={size - padding} x2={size - padding} y2={padding} stroke="var(--color-accent)" strokeWidth="1" strokeDasharray="4,4" />
+                <line x1={scale(domainMin)} y1={scaleY(domainMin)} x2={scale(domainMax)} y2={scaleY(domainMax)} stroke="var(--color-accent)" strokeWidth="1" strokeDasharray="4,4" />
                 
                 {/* Data Points */}
                 {data.map((d, i) => {
                     const isTopDisparity = topDisparityContexts.has(d.context);
+                    // Clip values to be within the domain for plotting
+                    const humanValue = Math.max(domainMin, Math.min(domainMax, d.humanValue));
+                    const llmValue = Math.max(domainMin, Math.min(domainMax, d.llmValue));
                     return (
                     <circle
                         key={i}
-                        cx={scale(d.humanValue)}
-                        cy={scaleY(d.llmValue)}
+                        cx={scale(humanValue)}
+                        cy={scaleY(llmValue)}
                         r={isTopDisparity ? 6 : 4}
                         fill={isTopDisparity ? 'var(--color-destructive)' : 'var(--color-primary)'}
                         fillOpacity="0.8"
@@ -517,6 +539,21 @@ const ContextScatterPlot: React.FC<{
 interface ReasoningDashboardProps {
     evaluations: ReasoningEvaluationRecord[];
 }
+
+const SCORE_QUADRANT_LABELS = {
+    topRight: 'High Agreement (Good Scores)',
+    topLeft: 'Disagreement (LLM Overestimates)',
+    bottomLeft: 'High Agreement (Bad Scores)',
+    bottomRight: 'Disagreement (LLM Underestimates)',
+};
+
+const DISPARITY_QUADRANT_LABELS = {
+    topRight: 'High Agreement (High Disparity)',
+    topLeft: 'Disagreement (LLM Overestimates)',
+    bottomLeft: 'High Agreement (Low Disparity)',
+    bottomRight: 'Disagreement (LLM Underestimates)',
+};
+
 
 const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) => {
     const [drilldownData, setDrilldownData] = useState<{ title: string; evaluations: ReasoningEvaluationRecord[] } | null>(null);
@@ -642,7 +679,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     };
 
     const { contextAnalysisData, top5DisparateContexts } = useMemo(() => {
-        // FIX: Explicitly type the empty Set to avoid type inference issues.
         if (filteredEvaluations.length === 0) return { contextAnalysisData: null, top5DisparateContexts: new Set<string>() };
 
         const contextMap = new Map<string, { englishScores: number[], nativeScores: number[], disparities: number[], evaluations: ReasoningEvaluationRecord[] }>();
@@ -1214,7 +1250,10 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     )}
                     
                     {contextAnalysisData && (
-                        <DashboardCard title="Context Analysis" subtitle="Analyze evaluation consistency for specific scenario contexts.">
+                        <DashboardCard 
+                            title="Context Analysis" 
+                            subtitle="Analyze consistency for specific contexts. For Disparity, lower scores are better. For English/Native, higher scores are better. Dots on the green line indicate perfect agreement."
+                        >
                             <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                                <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
                                     <button onClick={() => setContextView('list')} className={`px-3 py-1.5 rounded-md transition-colors ${contextView === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>List View</button>
@@ -1264,9 +1303,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                 </div>
                             ) : mergedContextDataForPlots ? (
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 -mt-2">
-                                    <ContextScatterPlot data={mergedContextDataForPlots.disparity} title="Disparity Comparison" domainMax={4} topDisparityContexts={top5DisparateContexts} />
-                                    <ContextScatterPlot data={mergedContextDataForPlots.english} title="English Score Comparison" domainMax={5} topDisparityContexts={top5DisparateContexts} />
-                                    <ContextScatterPlot data={mergedContextDataForPlots.native} title="Native Score Comparison" domainMax={5} topDisparityContexts={top5DisparateContexts} />
+                                    <ContextScatterPlot data={mergedContextDataForPlots.disparity} title="Disparity Comparison" domain={[0, 4]} topDisparityContexts={top5DisparateContexts} quadrantLabels={DISPARITY_QUADRANT_LABELS} />
+                                    <ContextScatterPlot data={mergedContextDataForPlots.english} title="English Score Comparison" domain={[1, 5]} topDisparityContexts={top5DisparateContexts} quadrantLabels={SCORE_QUADRANT_LABELS} />
+                                    <ContextScatterPlot data={mergedContextDataForPlots.native} title="Native Score Comparison" domain={[1, 5]} topDisparityContexts={top5DisparateContexts} quadrantLabels={SCORE_QUADRANT_LABELS} />
                                 </div>
                             ) : (
                                 <p className="text-center text-muted-foreground italic py-8">LLM context data is not available for the scatter plot.</p>
