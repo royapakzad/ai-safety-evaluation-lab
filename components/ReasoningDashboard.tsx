@@ -416,6 +416,98 @@ const CompactPerformanceChart: React.FC<{
     );
 };
 
+const ContextScatterPlot: React.FC<{
+    humanData: { context: string; avgEnglish: number; avgNative: number; avgDisparity: number; }[];
+    llmData: { context: string; avgEnglish: number; avgNative: number; avgDisparity: number; }[];
+    sortBy: 'disparity' | 'english' | 'native';
+}> = ({ humanData, llmData, sortBy }) => {
+    const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string, human: number, llm: number } | null>(null);
+    const getValue = (item: any, sortKey: typeof sortBy) => {
+        if (sortKey === 'disparity') return item.avgDisparity;
+        if (sortKey === 'english') return item.avgEnglish;
+        return item.avgNative;
+    };
+    const mergedData = useMemo(() => {
+        return humanData.map(h => {
+            const l = llmData.find(l => l.context === h.context);
+            if (!l) return null;
+            return {
+                context: h.context,
+                humanValue: getValue(h, sortBy),
+                llmValue: getValue(l, sortBy),
+            };
+        }).filter((d): d is { context: string; humanValue: number; llmValue: number; } => d !== null);
+    }, [humanData, llmData, sortBy]);
+
+    const size = 450;
+    const padding = 50;
+    const domainMax = sortBy === 'disparity' ? 4 : 5;
+    const scale = (val: number) => padding + (val / domainMax) * (size - 2 * padding);
+    const scaleY = (val: number) => (size - padding) - (val / domainMax) * (size - 2 * padding);
+
+    if (mergedData.length === 0) {
+        return <p className="text-center text-muted-foreground italic py-8">No overlapping context data between Human and LLM evaluations to display.</p>
+    }
+
+    return (
+        <div className="relative flex flex-col items-center">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                {/* Axes and Grid */}
+                {[...Array(domainMax + 1)].map((_, i) => {
+                    const pos = scale(i);
+                    const posY = scaleY(i);
+                    return (
+                        <g key={i} className="text-muted-foreground text-[10px]">
+                            {/* Horizontal grid line */}
+                            <line x1={padding} y1={posY} x2={size - padding} y2={posY} stroke="var(--color-border)" strokeDasharray="2,2" />
+                            <text x={padding - 8} y={posY} textAnchor="end" dominantBaseline="middle">{i}</text>
+                            {/* Vertical grid line */}
+                            <line x1={pos} y1={padding} x2={pos} y2={size - padding} stroke="var(--color-border)" strokeDasharray="2,2" />
+                            <text x={pos} y={size - padding + 15} textAnchor="middle">{i}</text>
+                        </g>
+                    );
+                })}
+                 <text x={size/2} y={size - 10} textAnchor="middle" className="font-semibold fill-foreground text-sm">👤 Human Score</text>
+                 <text x={15} y={size/2} textAnchor="middle" transform={`rotate(-90, 15, ${size/2})`} className="font-semibold fill-foreground text-sm">🤖 LLM Score</text>
+
+                {/* Line of Perfect Agreement */}
+                <line x1={padding} y1={size - padding} x2={size - padding} y2={padding} stroke="var(--color-accent)" strokeWidth="1" strokeDasharray="4,4" />
+                
+                {/* Data Points */}
+                {mergedData.map((d, i) => (
+                    <circle
+                        key={i}
+                        cx={scale(d.humanValue)}
+                        cy={scaleY(d.llmValue)}
+                        r="5"
+                        fill="var(--color-primary)"
+                        fillOpacity="0.7"
+                        stroke="var(--color-primary-foreground)"
+                        strokeWidth="1"
+                        className="cursor-pointer transition-all duration-150 hover:r-7 hover:fill-primary-hover"
+                        onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const svgRect = e.currentTarget.ownerSVGElement!.getBoundingClientRect();
+                            setTooltip({ x: rect.left - svgRect.left, y: rect.top - svgRect.top, text: d.context, human: d.humanValue, llm: d.llmValue });
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
+                    />
+                ))}
+            </svg>
+             {tooltip && (
+                <div
+                    className="absolute bg-popover text-popover-foreground text-xs px-3 py-2 rounded-lg shadow-xl pointer-events-none max-w-xs z-10"
+                    style={{ left: tooltip.x, top: tooltip.y, transform: `translate(10px, -110%)` }}
+                >
+                   <p className="font-bold mb-1 truncate">{tooltip.text}</p>
+                   <p>Human: <span className="font-mono">{tooltip.human.toFixed(2)}</span></p>
+                   <p>LLM: <span className="font-mono">{tooltip.llm.toFixed(2)}</span></p>
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 // --- MAIN COMPONENT ---
 
@@ -427,8 +519,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const [drilldownData, setDrilldownData] = useState<{ title: string; evaluations: ReasoningEvaluationRecord[] } | null>(null);
     const [selectedLanguagePair, setSelectedLanguagePair] = useState<string>('All');
     const [selectedModel, setSelectedModel] = useState<string>('All');
-    const [contextSortBy, setContextSortBy] = useState<'english' | 'native' | 'disparity'>('disparity');
+    const [contextSortBy, setContextSortBy] = useState<'disparity' | 'english' | 'native'>('disparity');
     const [topNContexts, setTopNContexts] = useState<number>(5);
+    const [contextView, setContextView] = useState<'list' | 'plot'>('list');
 
 
     const languagePairs = useMemo(() => {
@@ -586,8 +679,44 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             return b.avgDisparity - a.avgDisparity;
         });
 
-        return processedData.slice(0, topNContexts);
-    }, [filteredEvaluations, contextSortBy, topNContexts]);
+        return processedData
+    }, [filteredEvaluations, contextSortBy]);
+    
+    const llmContextAnalysisData = useMemo(() => {
+        const llmEvals = filteredEvaluations.filter(e => e.llmEvaluationStatus === 'completed' && e.llmScores);
+        if (llmEvals.length === 0) return null;
+
+        const contextMap = new Map<string, { englishScores: number[], nativeScores: number[], disparities: number[] }>();
+        
+        llmEvals.forEach(ev => {
+            if (!ev.scenarioContext || !ev.llmScores) return;
+            const context = ev.scenarioContext.trim();
+            if (!contextMap.has(context)) {
+                contextMap.set(context, { englishScores: [], nativeScores: [], disparities: [] });
+            }
+            
+            const data = contextMap.get(context)!;
+            const engScore = calculateOverallScore(ev.llmScores.english);
+            const natScore = calculateOverallScore(ev.llmScores.native);
+            
+            data.englishScores.push(engScore);
+            data.nativeScores.push(natScore);
+            data.disparities.push(Math.abs(engScore - natScore));
+        });
+
+        const processedData = Array.from(contextMap.entries()).map(([context, data]) => {
+            const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+            const count = data.englishScores.length;
+            return {
+                context,
+                avgEnglish: count > 0 ? sum(data.englishScores) / count : 0,
+                avgNative: count > 0 ? sum(data.nativeScores) / count : 0,
+                avgDisparity: count > 0 ? sum(data.disparities) / count : 0,
+                count
+            };
+        });
+        return processedData
+    }, [filteredEvaluations]);
 
 
     const heatmapData = useMemo(() => {
@@ -938,41 +1067,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         </DashboardCard>
                     </div>
 
-                    {contextAnalysisData && contextAnalysisData.length > 0 && (
-                        <DashboardCard title="Context Analysis" subtitle={`Showing Top ${topNContexts} problematic contexts sorted by ${contextSortBy}. Click a context to see its evaluations.`}>
-                            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                                <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
-                                    {(['disparity', 'english', 'native'] as const).map(sortBy => (
-                                        <button key={sortBy} onClick={() => setContextSortBy(sortBy)} className={`px-3 py-1.5 rounded-md transition-colors ${contextSortBy === sortBy ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>
-                                            {sortBy === 'disparity' ? 'Highest Disparity' : sortBy === 'english' ? 'Worst English' : 'Worst Native'}
-                                        </button>
-                                    ))}
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <label htmlFor="top-n-select" className="text-muted-foreground">Show:</label>
-                                    <select id="top-n-select" value={topNContexts} onChange={e => setTopNContexts(Number(e.target.value))} className="form-select bg-card border-border rounded-md p-1.5 focus:ring-2 focus:ring-ring">
-                                        <option value={3}>Top 3</option>
-                                        <option value={5}>Top 5</option>
-                                        <option value={10}>Top 10</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="space-y-3">
-                                {contextAnalysisData.map((data, index) => (
-                                    <button key={index} onClick={() => setDrilldownData({title: `Evaluations for Context: "${data.context}"`, evaluations: data.evaluations})} className="w-full text-left p-3 bg-background rounded-lg border border-border/70 hover:bg-muted/60 transition-colors">
-                                        <p className="font-semibold text-foreground truncate">{data.context}</p>
-                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1 font-mono">
-                                            <span>Avg Eng: <span className="font-bold text-blue-500">{data.avgEnglish.toFixed(2)}</span></span>
-                                            <span>Avg Nat: <span className="font-bold text-violet-400">{data.avgNative.toFixed(2)}</span></span>
-                                            <span>Avg Disp: <span className="font-bold text-orange-500">{data.avgDisparity.toFixed(2)}</span></span>
-                                            <span className="text-foreground/60">(n={data.count})</span>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </DashboardCard>
-                    )}
-
                     <DashboardCard 
                         title="Harm Assessment Scores (Human Scores)" 
                         subtitle="Average human scores across core rubric dimensions (1=Worst, 5=Best). Click a radar label to see low-scoring evaluations for that dimension."
@@ -1089,6 +1183,55 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             </div>
                         </DashboardCard>
                     )}
+                    
+                    {contextAnalysisData && (
+                        <DashboardCard title="Context Analysis" subtitle="Analyze evaluation consistency for specific scenario contexts.">
+                            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                               <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
+                                    <button onClick={() => setContextView('list')} className={`px-3 py-1.5 rounded-md transition-colors ${contextView === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>List View</button>
+                                    <button onClick={() => setContextView('plot')} className={`px-3 py-1.5 rounded-md transition-colors ${contextView === 'plot' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>Scatter Plot</button>
+                                </div>
+                                <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
+                                    {(['disparity', 'english', 'native'] as const).map(sortBy => (
+                                        <button key={sortBy} onClick={() => setContextSortBy(sortBy)} className={`px-3 py-1.5 rounded-md transition-colors ${contextSortBy === sortBy ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>
+                                            {sortBy === 'disparity' ? 'Sort by Disparity' : sortBy === 'english' ? 'Sort by English Score' : 'Sort by Native Score'}
+                                        </button>
+                                    ))}
+                                </div>
+                                {contextView === 'list' && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <label htmlFor="top-n-select" className="text-muted-foreground">Show:</label>
+                                    <select id="top-n-select" value={topNContexts} onChange={e => setTopNContexts(Number(e.target.value))} className="form-select bg-card border-border rounded-md p-1.5 focus:ring-2 focus:ring-ring">
+                                        <option value={3}>Top 3</option>
+                                        <option value={5}>Top 5</option>
+                                        <option value={10}>Top 10</option>
+                                    </select>
+                                </div>
+                                )}
+                            </div>
+                            
+                            {contextView === 'list' ? (
+                                <div className="space-y-3">
+                                    {contextAnalysisData.slice(0, topNContexts).map((data, index) => (
+                                        <button key={index} onClick={() => setDrilldownData({title: `Evaluations for Context: "${data.context}"`, evaluations: data.evaluations})} className="w-full text-left p-3 bg-background rounded-lg border border-border/70 hover:bg-muted/60 transition-colors">
+                                            <p className="font-semibold text-foreground truncate">{data.context}</p>
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1 font-mono">
+                                                <span>Avg Eng: <span className="font-bold text-blue-500">{data.avgEnglish.toFixed(2)}</span></span>
+                                                <span>Avg Nat: <span className="font-bold text-violet-400">{data.avgNative.toFixed(2)}</span></span>
+                                                <span>Avg Disp: <span className="font-bold text-orange-500">{data.avgDisparity.toFixed(2)}</span></span>
+                                                <span className="text-foreground/60">(n={data.count})</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : llmContextAnalysisData ? (
+                               <ContextScatterPlot humanData={contextAnalysisData} llmData={llmContextAnalysisData} sortBy={contextSortBy} />
+                            ) : (
+                                <p className="text-center text-muted-foreground italic py-8">LLM context data is not available for the scatter plot.</p>
+                            )}
+                        </DashboardCard>
+                    )}
+
                 </>
             )}
         </div>
