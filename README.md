@@ -15,7 +15,7 @@ The **Multilingual AI Safety Evaluation Laboratory** is a specialized research t
 
 While most LLM development and testing is English-centric, the majority of the world's population does not speak English. This creates a significant blind spot where models may be less helpful, less accurate, or even more dangerous when used in other languages.
 
-This lab's primary purpose is to empower researchers, developers, and policymakers to rigorously assess **how model performance, safety, and alignment change across different languages**. It provides the tools to move beyond assumptions and gather concrete evidence, ensuring that AI systems are developed and deployed in a way that is equitable, fair, and safe for global, multilingual populations.
+This lab's primary purpose is to empower researchers, developers, and policymakers to rigorously assess **how model performance and safety aspects change across different languages**. It provides the tools to move beyond assumptions and gather concrete evidence, ensuring that AI systems are developed and deployed in a way that is equitable, fair, and safe for global, multilingual populations.
 
 
 ---
