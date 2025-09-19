@@ -56,7 +56,7 @@ const BarChart: React.FC<{ data: { label: string; valueA: number; valueB: number
 };
 
 const RadarChart: React.FC<{ 
-    data: { labels: string[], datasets: { label: string; color: string; values: number[] }[] };
+    data: { labels: string[], datasets: { label: string; color: string; values: number[], dashed?: boolean }[] };
     onLabelClick: (label: string, index: number) => void;
 }> = ({ data, onLabelClick }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
@@ -97,7 +97,15 @@ const RadarChart: React.FC<{
                 })}
                 {/* Data Polygons */}
                 {points.map((p, i) => (
-                     <polygon key={i} points={p} fill={data.datasets[i].color} fillOpacity="0.3" stroke={data.datasets[i].color} strokeWidth="2" />
+                     <polygon 
+                        key={i} 
+                        points={p} 
+                        fill={data.datasets[i].color} 
+                        fillOpacity="0.15" 
+                        stroke={data.datasets[i].color} 
+                        strokeWidth="2" 
+                        strokeDasharray={data.datasets[i].dashed ? "5 5" : "none"}
+                    />
                 ))}
                  {/* Hover Hotspots */}
                 {data.datasets.map(dataset => 
@@ -144,10 +152,17 @@ const RadarChart: React.FC<{
                     {tooltip.text}
                 </div>
             )}
-            <div className="flex gap-4 mt-4 text-xs">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 text-xs justify-center">
                 {data.datasets.map(d => (
                     <div key={d.label} className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }}></span>
+                        <svg width="24" height="12" viewBox="0 0 24 12" className="flex-shrink-0">
+                           <line 
+                               x1="0" y1="6" x2="24" y2="6" 
+                               stroke={d.color} 
+                               strokeWidth="2" 
+                               strokeDasharray={d.dashed ? "4 4" : "none"} 
+                           />
+                        </svg>
                         <span>{d.label}</span>
                     </div>
                 ))}
@@ -632,7 +647,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     }, [filteredEvaluations]);
 
 
-    const radarChartData = useMemo(() => {
+    const humanRadarChartData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
         const dimensions = ['actionability_practicality', 'factuality', 'safety_security_privacy', 'tone_dignity_empathy', 'non_discrimination_fairness', 'freedom_of_access_censorship'] as const;
         
@@ -660,9 +675,40 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             labels,
             dimensions,
             datasets: [
-                { label: 'English', color: '#3b82f6', values: avgScoresA }, // blue-500
-                { label: 'Native Language', color: '#a78bfa', values: avgScoresB }, // violet-400
+                { label: 'Human - English', color: '#3b82f6', values: avgScoresA, dashed: false }, // blue-500
+                { label: 'Human - Native', color: '#a855f7', values: avgScoresB, dashed: false }, // purple-500
             ],
+        };
+    }, [filteredEvaluations]);
+
+    const llmRadarChartData = useMemo(() => {
+        const llmCompletedEvals = filteredEvaluations.filter(e => e.llmEvaluationStatus === 'completed' && e.llmScores);
+        if (llmCompletedEvals.length === 0) return null;
+
+        const dimensions = RUBRIC_DIMENSIONS.map(d => d.key);
+        
+        const sumLlmA = dimensions.map(() => 0);
+        const sumLlmB = dimensions.map(() => 0);
+
+        llmCompletedEvals.forEach(ev => {
+            if (ev.llmScores?.english && ev.llmScores?.native) {
+                dimensions.forEach((dim, i) => {
+                    sumLlmA[i] += getNumericScore(dim as any, ev.llmScores.english);
+                    sumLlmB[i] += getNumericScore(dim as any, ev.llmScores.native);
+                });
+            }
+        });
+
+        const count = llmCompletedEvals.length;
+        const avgLlmA = sumLlmA.map(v => v / count);
+        const avgLlmB = sumLlmB.map(v => v / count);
+
+        return {
+            datasets: [
+                { label: 'LLM - English', color: '#60a5fa', values: avgLlmA, dashed: true }, // blue-400
+                { label: 'LLM - Native', color: '#c084fc', values: avgLlmB, dashed: true }, // purple-400
+            ],
+            evalCount: count,
         };
     }, [filteredEvaluations]);
 
@@ -1049,8 +1095,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     };
 
     const handleRadarLabelClick = (label: string, index: number) => {
-        if (!radarChartData) return;
-        const dimensionKey = radarChartData.dimensions[index];
+        if (!humanRadarChartData) return;
+        const dimensionKey = humanRadarChartData.dimensions[index];
         const dimensionLabel = RUBRIC_DIMENSIONS.find(d => d.key === dimensionKey)?.label || label;
         const lowScoringEvals = filteredEvaluations.filter(ev => {
             const scoreA = getNumericScore(dimensionKey as any, ev.humanScores.english);
@@ -1105,7 +1151,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 </div>
             </DashboardCard>
 
-            {!metrics || !radarChartData || !disparityChartData ? (
+            {!metrics || !humanRadarChartData || !disparityChartData ? (
                  <div className="text-center py-10 bg-card border border-border rounded-xl shadow-sm">
                     <p className="text-lg text-muted-foreground">No evaluations found for the selected filters.</p>
                 </div>
@@ -1133,11 +1179,21 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     </div>
 
                     <DashboardCard 
-                        title="Harm Assessment Scores (Human Scores)" 
-                        subtitle="Average human scores across core rubric dimensions (1=Worst, 5=Best). Click a radar label to see low-scoring evaluations for that dimension."
+                        title="Harm Assessment Scores (Human vs. LLM)" 
+                        subtitle={`Average scores across core rubric dimensions (1=Worst, 5=Best). Human scores based on ${filteredEvaluations.length} evals. LLM scores based on ${llmRadarChartData?.evalCount || 0} completed evals. Click a label for details.`}
                     >
                         <div className="flex items-center justify-center pt-2">
-                            <RadarChart data={radarChartData} onLabelClick={handleRadarLabelClick}/>
+                           {(() => {
+                                const combinedRadarData = {
+                                    labels: humanRadarChartData.labels,
+                                    dimensions: humanRadarChartData.dimensions,
+                                    datasets: [
+                                        ...humanRadarChartData.datasets,
+                                        ...(llmRadarChartData ? llmRadarChartData.datasets : [])
+                                    ]
+                                };
+                                return <RadarChart data={combinedRadarData} onLabelClick={handleRadarLabelClick}/>;
+                           })()}
                         </div>
                     </DashboardCard>
                     
