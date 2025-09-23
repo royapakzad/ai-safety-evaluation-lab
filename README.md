@@ -41,13 +41,17 @@ The platform supports research into the scalability and reliability of AI evalua
 ### D. Interactive Dashboard (Multilingual Disparity & Model Analytics)
 An interactive, filterable dashboard provides both high-level and detailed views of evaluation results. Users can refine data by language pair and model, then explore comparisons of English vs. native language outputs across performance metrics (generation time, word counts, reasoning length), rubric-based human scores (via radar charts), and multilingual disparities (heatmaps). It also visualizes human vs. LLM judge assessments through stacked bars, highlights agreement rates, and enables cross-model comparisons of quality, disparity flags, and performance.
 
-<img width="1131" height="734" alt="image" src="https://github.com/user-attachments/assets/09a3b289-9be3-4350-b66a-14e5d60e4933" />
+<img width="1190" height="886" alt="Screenshot 2025-09-23 at 10 39 22 AM" src="https://github.com/user-attachments/assets/f09f73b8-bb06-4944-9700-a558274ba104" />
 
-<img width="1121" height="372" alt="Screenshot 2025-09-09 at 3 46 03 PM" src="https://github.com/user-attachments/assets/fc206627-b0f3-4bdd-86b3-62b046c7e199" />
+<img width="1194" height="380" alt="Screenshot 2025-09-23 at 10 40 07 AM" src="https://github.com/user-attachments/assets/7c3c7e4d-2735-417c-94c9-3dbd4957cb24" />
 
-<img width="1129" height="396" alt="Screenshot 2025-09-09 at 3 46 26 PM" src="https://github.com/user-attachments/assets/0ccc12b9-d5ca-47d5-a7af-0adc5e1496f9" />
+<img width="1338" height="451" alt="Screenshot 2025-09-23 at 10 40 37 AM" src="https://github.com/user-attachments/assets/ef178a40-2c83-411e-af79-2418c7a2f174" />
 
-<img width="1123" height="650" alt="Screenshot 2025-09-09 at 3 46 41 PM" src="https://github.com/user-attachments/assets/d717d202-5d26-401f-b442-2c859eb900a4" />
+<img width="1334" height="771" alt="Screenshot 2025-09-23 at 10 40 49 AM" src="https://github.com/user-attachments/assets/a4b5d1d5-1d93-45e8-ab06-e839e2c390fd" />
+
+
+
+
 
 ---
 
