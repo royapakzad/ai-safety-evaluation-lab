@@ -122,7 +122,7 @@ The application features a two-level access system:
     *   **Password:** Your email address (the same as your username)
     *   **Permissions:** Evaluators can conduct experiments, submit evaluations, view only their own past evaluations, and download a CSV of their own data.
 
-## 6. Configuration (Crucial!)
+## 6. Configuration 
 
 This application requires configuration for both API keys and administrator credentials. This is handled via an `env.js` file for local development and **environment variables** for production deployments (e.g., Vercel).
 
