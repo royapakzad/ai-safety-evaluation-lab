@@ -1,8 +1,10 @@
 
+
 import React, { useMemo, useState } from 'react';
 import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
 import LoadingSpinner from './LoadingSpinner';
+import Tooltip from './Tooltip';
 
 // --- HELPER COMPONENTS ---
 
@@ -17,14 +19,21 @@ const DashboardCard: React.FC<{ title: string; subtitle?: string; children: Reac
 );
 
 
-const StatCard: React.FC<{ label: string; value: string | number; icon: React.ReactNode }> = ({ label, value, icon }) => (
+const StatCard: React.FC<{ label: string; value: string | number; icon: React.ReactNode; tooltip?: React.ReactNode }> = ({ label, value, icon, tooltip }) => (
     <div className="bg-background p-4 rounded-lg flex items-center gap-4 border border-border/70 shadow-sm">
         <div className="bg-primary/10 text-primary p-3 rounded-lg">
             {icon}
         </div>
         <div>
             <div className="text-2xl font-bold text-foreground">{value}</div>
-            <div className="text-sm text-muted-foreground">{label}</div>
+            <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <span>{label}</span>
+                {tooltip && (
+                    <Tooltip content={tooltip}>
+                        <span className="cursor-help border border-dashed border-muted-foreground rounded-full w-4 h-4 flex items-center justify-center text-xs">?</span>
+                    </Tooltip>
+                )}
+            </div>
         </div>
     </div>
 );
@@ -971,20 +980,23 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             const count = evals.length;
             if (count === 0) return;
 
-            const scoreSums = Object.fromEntries(dimensionKeys.map(k => [k, 0]));
-            const disparityCounts = Object.fromEntries(disparityKeys.map(k => [k, 0]));
+            // FIX: Explicitly type the records to prevent Object.fromEntries from inferring `unknown` values, which causes downstream errors.
+            const scoreSums: Record<string, number> = Object.fromEntries(dimensionKeys.map(k => [k, 0]));
+            const disparityCounts: Record<string, number> = Object.fromEntries(disparityKeys.map(k => [k, 0]));
             const perfMetrics = { totalGenTimeA: 0, totalGenTimeB: 0, totalAnswerWordsA: 0, totalAnswerWordsB: 0 };
             
             evals.forEach(ev => {
                 // Quality Scores
                 dimensionKeys.forEach(key => {
-                    const scoreA = getNumericScore(key as any, ev.humanScores.english);
-                    const scoreB = getNumericScore(key as any, ev.humanScores.native);
+                    // FIX: Removed unnecessary `as any` type assertion. The `key` type is correct.
+                    const scoreA = getNumericScore(key, ev.humanScores.english);
+                    const scoreB = getNumericScore(key, ev.humanScores.native);
                     scoreSums[key] += (scoreA + scoreB) / 2;
                 });
                 // Disparity Scores
                 disparityKeys.forEach(key => {
-                    if (ev.humanScores.disparity[key as keyof typeof ev.humanScores.disparity] === 'yes') {
+                    // FIX: Removed unnecessary type assertion. `as const` on DISPARITY_CRITERIA ensures `key` is a valid key.
+                    if (ev.humanScores.disparity[key] === 'yes') {
                         disparityCounts[key]++;
                     }
                 });
@@ -1161,7 +1173,12 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         <DashboardCard title="Key Metrics" subtitle="A high-level overview of the filtered evaluation data.">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <StatCard label="Total Evaluations" value={metrics.totalEvaluations} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M10.75 2.75a.75.75 0 00-1.5 0v14.5a.75.75 0 001.5 0V2.75z" /><path d="M3.5 10a.75.75 0 01.75-.75h11.5a.75.75 0 010 1.5H4.25A.75.75 0 013.5 10z" /></svg>} />
-                                <StatCard label="Unique Scenarios" value={metrics.uniqueScenarios} icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>} />
+                                <StatCard 
+                                    label="Unique Base Scenarios" 
+                                    value={metrics.uniqueScenarios} 
+                                    icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>}
+                                    tooltip="Counts distinct scenarios from your source (e.g., unique rows in your CSV). A single scenario tested against multiple language pairs still counts as one base scenario."
+                                />
                             </div>
                         </DashboardCard>
                          <DashboardCard title="Average Performance" subtitle="Comparing output metrics between English and native language responses.">
