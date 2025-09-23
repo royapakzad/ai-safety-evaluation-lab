@@ -94,45 +94,61 @@ The **Multilingual Evaluation Lab** is a **platform** that helps governments, in
 - **Business Model & Incentives:** Assess how monetization strategies, data practices, and product roadmaps affect safety, accessibility, and equity outcomes.  
 - **Contextual Vulnerability Assessment:** Map risks for specific user groups and country contexts, linking technical evaluation findings to broader societal impacts.  
  
-
 ---
 
 ## 5. Access Control & Login
 
-The platform features two levels of access:
+The application features a two-level access system:
 
-- **Admin Access**  
-  - Permissions: View all evaluations, download complete datasets.  
-  - Login: Contact the project administrator for credentials.  
+*   **Admin Access:**
+    *   **Permissions:** Admins can view all evaluations submitted by all users and download a complete CSV of all data from the platform.
+    *   **Login:** Admin credentials are set via environment variables. For local development, they can be set in `env.js`. For production (e.g., Vercel), they must be set in your project's environment variable settings (see Section 6 below).
 
-- **Evaluator Access**  
-  - Username: Your email address  
-  - Password: Your email address (default, same as username)  
-  - Permissions: Conduct experiments, view and download only your own evaluations.  
+*   **Evaluator Access:**
+    *   **Username:** Your email address (e.g., `user@example.com`)
+    *   **Password:** Your email address (the same as your username)
+    *   **Permissions:** Evaluators can conduct experiments, submit evaluations, view only their own past evaluations, and download a CSV of their own data.
 
----
+## 6. Configuration (Crucial!)
 
-## 6. API Key Configuration
+This application requires configuration for both API keys and administrator credentials. This is handled via an `env.js` file for local development and **environment variables** for production deployments (e.g., Vercel).
 
-This application requires API keys for **Google Gemini**, **OpenAI**, and **Mistral** models.  
+#### A. For Local Development (Recommended)
 
-**Local Setup Instructions:**
+1.  **Create `env.js` file:** In the root directory of the project, create a file named `env.js`.
+2.  **Add your keys and credentials to `env.js`:**
+    ```javascript
+    // IMPORTANT: DO NOT COMMIT THIS FILE TO VERSION CONTROL!
+    // This file is for local development configuration only.
 
-1. Create an `env.js` file in the project root.  
-2. Add your API keys:  
+    // For Google Gemini
+    export const API_KEY = "YOUR_GOOGLE_GEMINI_API_KEY_HERE";
+    
+    // For OpenAI
+    export const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE";
 
-   ```javascript
-   // env.js (do not commit this file!)
-   export const API_KEY = "YOUR_GOOGLE_GEMINI_API_KEY_HERE";
-   export const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE";
-   export const MISTRAL_API_KEY = "YOUR_MISTRAL_API_KEY_HERE";
+    // For Mistral
+    export const MISTRAL_API_KEY = "YOUR_MISTRAL_API_KEY_HERE";
 
-3.  **Security:**
-    *   **DO NOT COMMIT `env.js`** to Git or any version control system.
-    *   Add `env.js` to your `.gitignore` file: `echo "env.js" >> .gitignore`
+    // --- Admin Credentials ---
+    // For local development, you can set the admin user here.
+    // In production, these values are ignored; use environment variables instead.
+    export const ADMIN_EMAIL = "admin@example.com";
+    export const ADMIN_PASSWORD = "your-secure-local-password";
+    ```
+3.  **Security:** Ensure `env.js` is listed in your `.gitignore` file to prevent accidentally committing secrets.
 
-The application will read keys from `env.js` and display a prominent warning if any are missing or are still placeholders.
+#### B. For Production Deployment (Vercel, Netlify, etc.)
 
+To deploy your application safely, you **must** set the following environment variables in your hosting provider's project settings:
+
+*   `API_KEY`: Your Google Gemini API Key.
+*   `OPENAI_API_KEY`: Your OpenAI API Key.
+*   `MISTRAL_API_KEY`: Your Mistral API Key.
+*   `ADMIN_EMAIL`: The email address for the admin user.
+*   `ADMIN_PASSWORD`: The password for the admin user.
+
+The application is built to automatically use these environment variables when deployed, ensuring your secrets are never exposed in your codebase.
 ## 7. Codebase Philosophy & Best Practices
 
 This project is structured for modularity and maintainability. Key principles for developers include:
