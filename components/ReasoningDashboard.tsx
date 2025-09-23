@@ -147,7 +147,7 @@ const RadarChart: React.FC<{
                         );
                     })
                 )}
-                {/* Labels with Tooltips */}
+                {/* Labels */}
                 {data.dimensionData.map((dim, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
                     const labelRadius = radius + 65; // Increased radius to give labels more room
@@ -161,29 +161,14 @@ const RadarChart: React.FC<{
                     const foX = x - foWidth / 2;
                     const foY = y - foHeight / 2;
 
-                    const tooltipContent = (
-                        <div className="text-left">
-                            <p className="font-bold text-sm mb-1">{dim.fullLabel}</p>
-                            <p className="text-xs mb-2">{dim.description}</p>
-                            <h4 className="font-bold mb-1 text-xs border-t border-border pt-1">Relevant Human Rights</h4>
-                            <ul className="list-disc list-inside space-y-1 text-xs">
-                                {dim.humanRightsMapping.map(hr => <li key={hr.name}><strong>{hr.name}:</strong> {hr.description}</li>)}
-                            </ul>
-                        </div>
-                    );
-
                     const lines = dim.label.split(' & ');
 
                     return (
                         <foreignObject key={dim.label} x={foX} y={foY} width={foWidth} height={foHeight} style={{ overflow: 'visible' }}>
-                            {/* FIX: Removed invalid 'xmlns' attribute from div to resolve TypeScript error. */}
-                            <div className="flex items-center justify-center gap-1 p-1 text-center h-full w-full">
+                            <div className="flex items-center justify-center p-1 text-center h-full w-full">
                                 <span className="text-xs sm:text-sm text-muted-foreground cursor-pointer hover:text-primary hover:font-bold" onClick={() => onLabelClick(dim.key, dim.fullLabel)}>
                                      {lines.map((line, index) => <div key={index}>{line}</div>)}
                                 </span>
-                                <Tooltip content={tooltipContent}>
-                                     <span className="text-muted-foreground cursor-help border border-dashed border-muted-foreground rounded-full w-4 h-4 flex items-center justify-center text-xs shrink-0">?</span>
-                                </Tooltip>
                             </div>
                         </foreignObject>
                     );
@@ -1245,7 +1230,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                         ...(llmRadarChartData ? llmRadarChartData.datasets : [])
                                     ]
                                 };
-                                return <RadarChart data={combinedRadarData} onLabelClick={handleRadarLabelClick}/>;
+                                return <RadarChart data={combinedRadarData} onLabelClick={handleRadarLabelClick} />;
                            })()}
                         </div>
                     </DashboardCard>
