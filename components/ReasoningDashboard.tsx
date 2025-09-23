@@ -64,9 +64,22 @@ const BarChart: React.FC<{ data: { label: string; valueA: number; valueB: number
     )
 };
 
+
+// Define types inside the component file for clarity
+interface RadarChartDimensionData {
+    key: string;
+    label: string;
+    fullLabel: string;
+    description: string;
+    humanRightsMapping: { name: string; description: string; }[];
+}
+
 const RadarChart: React.FC<{ 
-    data: { labels: string[], datasets: { label: string; color: string; values: number[], dashed?: boolean }[] };
-    onLabelClick: (label: string, index: number) => void;
+    data: { 
+        dimensionData: RadarChartDimensionData[], 
+        datasets: { label: string; color: string; values: number[], dashed?: boolean }[] 
+    };
+    onLabelClick: (dimensionKey: string, dimensionLabel: string) => void;
 }> = ({ data, onLabelClick }) => {
     const [tooltip, setTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
 
@@ -75,7 +88,7 @@ const RadarChart: React.FC<{
     const numLevels = 5;
     const radius = center * 0.6; // Adjusted radius for the new size
     const levelDistance = radius / numLevels;
-    const numAxes = data.labels.length;
+    const numAxes = data.dimensionData.length;
 
     const getPointCoordinates = (value: number, index: number) => {
         const angle = (Math.PI * 2 * index) / numAxes - Math.PI / 2;
@@ -100,7 +113,7 @@ const RadarChart: React.FC<{
                 {[...Array(numLevels)].map((_, level) => (
                     <circle key={level} cx={center} cy={center} r={levelDistance * (level + 1)} fill="none" stroke="var(--color-border)" strokeWidth="1" />
                 ))}
-                {data.labels.map((_, i) => {
+                {data.dimensionData.map((_, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
                     return <line key={i} x1={center} y1={center} x2={center + radius * Math.cos(angle)} y2={center + radius * Math.sin(angle)} stroke="var(--color-border)" />;
                 })}
@@ -134,23 +147,46 @@ const RadarChart: React.FC<{
                         );
                     })
                 )}
-                {/* Labels */}
-                {data.labels.map((label, i) => {
+                {/* Labels with Tooltips */}
+                {data.dimensionData.map((dim, i) => {
                     const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
-                    const labelRadius = radius + 50; // Increased distance for labels
+                    const labelRadius = radius + 65; // Increased radius to give labels more room
                     const x = center + labelRadius * Math.cos(angle);
                     const y = center + labelRadius * Math.sin(angle);
                     
-                    const lines = label.split(' & ');
-                    const yOffset = -(lines.length - 1) * 8; // Adjust Y for multi-line text with larger font
+                    const foWidth = 160;
+                    const foHeight = 50;
+
+                    // Center the foreignObject on the calculated point
+                    const foX = x - foWidth / 2;
+                    const foY = y - foHeight / 2;
+
+                    const tooltipContent = (
+                        <div className="text-left">
+                            <p className="font-bold text-sm mb-1">{dim.fullLabel}</p>
+                            <p className="text-xs mb-2">{dim.description}</p>
+                            <h4 className="font-bold mb-1 text-xs border-t border-border pt-1">Relevant Human Rights</h4>
+                            <ul className="list-disc list-inside space-y-1 text-xs">
+                                {dim.humanRightsMapping.map(hr => <li key={hr.name}><strong>{hr.name}:</strong> {hr.description}</li>)}
+                            </ul>
+                        </div>
+                    );
+
+                    const lines = dim.label.split(' & ');
 
                     return (
-                        <text key={label} x={x} y={y + yOffset} textAnchor="middle" dominantBaseline="central" fontSize="14" className="fill-muted-foreground cursor-pointer hover:fill-primary hover:font-bold" onClick={() => onLabelClick(label, i)}>
-                           {lines.map((line, index) => (
-                               <tspan key={index} x={x} dy={index > 0 ? '1.2em' : '0'}>{line}</tspan>
-                           ))}
-                        </text>
-                    )
+                        <foreignObject key={dim.label} x={foX} y={foY} width={foWidth} height={foHeight} style={{ overflow: 'visible' }}>
+                            {/* FIX: Removed invalid 'xmlns' attribute from div to resolve TypeScript error. */}
+                            <div className="flex items-center justify-center gap-1 p-1 text-center h-full w-full">
+                                <span className="text-xs sm:text-sm text-muted-foreground cursor-pointer hover:text-primary hover:font-bold" onClick={() => onLabelClick(dim.key, dim.fullLabel)}>
+                                     {lines.map((line, index) => <div key={index}>{line}</div>)}
+                                </span>
+                                <Tooltip content={tooltipContent}>
+                                     <span className="text-muted-foreground cursor-help border border-dashed border-muted-foreground rounded-full w-4 h-4 flex items-center justify-center text-xs shrink-0">?</span>
+                                </Tooltip>
+                            </div>
+                        </foreignObject>
+                    );
                 })}
             </svg>
              {tooltip && (
@@ -658,21 +694,26 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
     const humanRadarChartData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
-        const dimensions = ['actionability_practicality', 'factuality', 'safety_security_privacy', 'tone_dignity_empathy', 'non_discrimination_fairness', 'freedom_of_access_censorship'] as const;
+        const dimensionsToInclude = ['actionability_practicality', 'factuality', 'safety_security_privacy', 'tone_dignity_empathy', 'non_discrimination_fairness', 'freedom_of_access_censorship'] as const;
         
-        const labels = dimensions.map(dKey => {
-            const longLabel = RUBRIC_DIMENSIONS.find(d => d.key === dKey)?.label || dKey;
-            return getShortLabel(longLabel);
-        });
-        
-        const sumA = dimensions.map(() => 0);
-        const sumB = dimensions.map(() => 0);
+        const dimensionData = RUBRIC_DIMENSIONS
+            .filter(dim => (dimensionsToInclude as readonly string[]).includes(dim.key))
+            .map(dim => ({
+                key: dim.key,
+                label: getShortLabel(dim.label),
+                fullLabel: dim.label,
+                description: dim.description,
+                humanRightsMapping: dim.humanRightsMapping
+            }));
+
+        const sumA = Array(dimensionData.length).fill(0);
+        const sumB = Array(dimensionData.length).fill(0);
 
         filteredEvaluations.forEach(ev => {
             if (ev.humanScores?.english && ev.humanScores?.native) {
-                dimensions.forEach((dim, i) => {
-                    sumA[i] += getNumericScore(dim, ev.humanScores.english);
-                    sumB[i] += getNumericScore(dim, ev.humanScores.native);
+                dimensionData.forEach((dim, i) => {
+                    sumA[i] += getNumericScore(dim.key, ev.humanScores.english);
+                    sumB[i] += getNumericScore(dim.key, ev.humanScores.native);
                 });
             }
         });
@@ -681,8 +722,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         const avgScoresB = sumB.map(v => v / filteredEvaluations.length);
 
         return {
-            labels,
-            dimensions,
+            dimensionData,
             datasets: [
                 { label: 'Human - English', color: '#3b82f6', values: avgScoresA, dashed: false }, // blue-500
                 { label: 'Human - Native', color: '#a855f7', values: avgScoresB, dashed: false }, // purple-500
@@ -1106,10 +1146,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         setDrilldownData({ title: `${source.charAt(0).toUpperCase() + source.slice(1)} Disparity: "${label}" is "${category}"`, evaluations: evalsToDrill });
     };
 
-    const handleRadarLabelClick = (label: string, index: number) => {
-        if (!humanRadarChartData) return;
-        const dimensionKey = humanRadarChartData.dimensions[index];
-        const dimensionLabel = RUBRIC_DIMENSIONS.find(d => d.key === dimensionKey)?.label || label;
+    const handleRadarLabelClick = (dimensionKey: string, dimensionLabel: string) => {
         const lowScoringEvals = filteredEvaluations.filter(ev => {
             const scoreA = getNumericScore(dimensionKey as any, ev.humanScores.english);
             const scoreB = getNumericScore(dimensionKey as any, ev.humanScores.native);
@@ -1202,8 +1239,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         <div className="flex items-center justify-center pt-2">
                            {(() => {
                                 const combinedRadarData = {
-                                    labels: humanRadarChartData.labels,
-                                    dimensions: humanRadarChartData.dimensions,
+                                    dimensionData: humanRadarChartData.dimensionData,
                                     datasets: [
                                         ...humanRadarChartData.datasets,
                                         ...(llmRadarChartData ? llmRadarChartData.datasets : [])
