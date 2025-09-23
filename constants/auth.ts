@@ -1,8 +1,9 @@
 // constants/auth.ts
 
 /**
- * Constants for user authentication and access control.
- * Centralizing these makes them easier to manage.
+ * This file is reserved for any future authentication-related constants.
+ * Admin credentials have been moved to environment variables for security.
  */
-export const ADMIN_EMAIL = "rpakzad@taraazresearch.org";
-export const ADMIN_PASSWORD = "AdminLevel@taraaz";
+
+// FIX: Added an empty export to make this file a module. This prevents "is not a module" errors.
+export {};
