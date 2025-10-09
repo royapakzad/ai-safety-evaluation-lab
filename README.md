@@ -11,7 +11,7 @@ _To create an account look at section 5. Access Control & Login_
 
 ## 1. Introduction: The Importance of Multilingual Evaluation
 
-The **Multilingual AI Safety Evaluation Laboratory** is a specialized research tool designed to address a critical gap in AI safety: the evaluation of Large Language Models (LLMs) in non-English contexts.
+The **Multilingual AI Safety Evaluation Laboratory** is a research tool designed to address an important gap in AI safety: the evaluation of Large Language Models (LLMs) in non-English contexts.
 
 While most LLM development and testing is English-centric, the majority of the world's population does not speak English. This creates a significant blind spot where models may be less helpful, less accurate, or even more dangerous when used in other languages.
 
