@@ -746,31 +746,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         };
     }, [filteredEvaluations]);
 
-    const scoreTableData = useMemo(() => {
-        if (!humanRadarChartData) return null;
-
-        const dimensions = humanRadarChartData.dimensionData;
-        const allDatasets = [
-            ...humanRadarChartData.datasets,
-            ...(llmRadarChartData ? llmRadarChartData.datasets : [])
-        ];
-
-        const headers = allDatasets.map(ds => ds.label);
-
-        const rows = dimensions.map((dim, index) => {
-            const row: { dimension: string, scores: { [header: string]: number } } = {
-                dimension: dim.fullLabel,
-                scores: {}
-            };
-            allDatasets.forEach(ds => {
-                row.scores[ds.label] = ds.values[index];
-            });
-            return row;
-        });
-
-        return { headers, rows };
-    }, [humanRadarChartData, llmRadarChartData]);
-
     // FIX: Refactor to fix 'unknown' key type issue by removing problematic `in` check.
     const calculateOverallScore = (scores: LanguageSpecificRubricScores | LlmRubricScores): number => {
         const dimensionKeys = RUBRIC_DIMENSIONS.map(d => d.key);
@@ -1263,33 +1238,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                 return <RadarChart data={combinedRadarData} onLabelClick={handleRadarLabelClick} />;
                            })()}
                         </div>
-                        {scoreTableData && (
-                            <div className="mt-8 pt-4 border-t border-border">
-                                <h4 className="text-md font-semibold text-center text-foreground mb-4">Average Score Breakdown</h4>
-                                <div className="text-xs text-foreground bg-background rounded-lg border border-border/70 overflow-hidden">
-                                    {/* Header */}
-                                    <div className="grid font-bold bg-muted" style={{ gridTemplateColumns: `minmax(150px, 2fr) repeat(${scoreTableData.headers.length}, 1fr)` }}>
-                                        <div className="p-2 border-r border-border/70">Dimension</div>
-                                        {scoreTableData.headers.map(header => (
-                                            <div key={header} className="p-2 text-center border-r border-border/70 last:border-r-0 whitespace-nowrap">
-                                                {header.replace('Human - ', 'H: ').replace('LLM - ', 'L: ').replace('English', 'Eng').replace('Native', 'Nat')}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {/* Rows */}
-                                    {scoreTableData.rows.map(row => (
-                                        <div key={row.dimension} className="grid border-t border-border/70" style={{ gridTemplateColumns: `minmax(150px, 2fr) repeat(${scoreTableData.headers.length}, 1fr)` }}>
-                                            <div className="p-2 border-r border-border/70 font-medium">{row.dimension}</div>
-                                            {scoreTableData.headers.map(header => (
-                                                <div key={header} className="p-2 text-center font-mono">
-                                                    {row.scores[header].toFixed(2)}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </DashboardCard>
                     
                     {heatmapData && (
