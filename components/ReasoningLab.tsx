@@ -2,6 +2,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -167,6 +168,9 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
   // View mode state
   const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState<boolean>(true);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Input Mode State
   const [inputMode, setInputMode] = useState<'custom' | 'csv'>('custom');
@@ -695,7 +699,16 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
     document.body.removeChild(link);
   };
   
-  const visibleEvaluations = allEvaluations;
+  const visibleEvaluations = allEvaluations.filter(evaluation => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    return evaluation.promptA.toLowerCase().includes(query) ||
+           evaluation.promptB.toLowerCase().includes(query) ||
+           evaluation.scenarioContext?.toLowerCase().includes(query) ||
+           evaluation.titleA.toLowerCase().includes(query) ||
+           evaluation.titleB.toLowerCase().includes(query);
+  });
   
   return (
     <div className="space-y-16">
@@ -812,10 +825,60 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
                  {visibleEvaluations.length > 0 && <button onClick={downloadCSV} className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 text-sm flex items-center justify-center" aria-label="Download evaluations as CSV"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>Download Full Report</button>}
              </div>
           </div>
+
+          {allEvaluations.length > 0 && (
+            <div className="mb-6">
+              <div className="relative max-w-md">
+                <input
+                  type="text"
+                  placeholder="Search scenarios by prompt, context, or title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                >
+                  <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+                </svg>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Showing {visibleEvaluations.length} of {allEvaluations.length} evaluations
+                </p>
+              )}
+            </div>
+          )}
           {isLoadingEvaluations ? (
             <div className="text-center py-10"><LoadingSpinner size="lg" /></div>
           ) : visibleEvaluations.length === 0 ? (
-            <div className="text-center py-10 bg-card border border-border rounded-xl shadow-sm"><p className="text-lg text-muted-foreground">No comparison evaluations saved yet.</p></div>
+            <div className="text-center py-10 bg-card border border-border rounded-xl shadow-sm">
+              <p className="text-lg text-muted-foreground">
+                {searchQuery ? `No evaluations found matching "${searchQuery}"` : 'No comparison evaluations saved yet.'}
+              </p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-2 text-primary hover:underline text-sm"
+                >
+                  Clear search to see all evaluations
+                </button>
+              )}
+            </div>
           ) : (
              viewMode === 'list' ? (
                 <div className="space-y-8">
