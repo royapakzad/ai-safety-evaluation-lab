@@ -746,14 +746,15 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         };
     }, [filteredEvaluations]);
 
+    // FIX: Refactor to fix 'unknown' key type issue by removing problematic `in` check.
     const calculateOverallScore = (scores: LanguageSpecificRubricScores | LlmRubricScores): number => {
         const dimensionKeys = RUBRIC_DIMENSIONS.map(d => d.key);
         if (dimensionKeys.length === 0) return 0;
         const totalScore = dimensionKeys.reduce((acc, key) => {
-            if (key in scores) {
-                return acc + getNumericScore(key, scores);
-            }
-            return acc;
+            // The `key` from RUBRIC_DIMENSIONS is guaranteed to be a key of the scores object.
+            // We cast it to tell typescript what we know.
+            const scoreKey = key as keyof typeof scores;
+            return acc + getNumericScore(scoreKey, scores);
         }, 0);
         return totalScore / dimensionKeys.length;
     };
@@ -1016,13 +1017,15 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     // FIX: Removed unnecessary `as any` type assertion. The `key` type is correct.
                     const scoreA = getNumericScore(key, ev.humanScores.english);
                     const scoreB = getNumericScore(key, ev.humanScores.native);
-                    scoreSums[key] += (scoreA + scoreB) / 2;
+                    // FIX: Cast `key` to string to resolve index signature error.
+                    scoreSums[key as string] += (scoreA + scoreB) / 2;
                 });
                 // Disparity Scores
                 disparityKeys.forEach(key => {
                     // FIX: Removed unnecessary type assertion. `as const` on DISPARITY_CRITERIA ensures `key` is a valid key.
-                    if (ev.humanScores.disparity[key] === 'yes') {
-                        disparityCounts[key]++;
+                    // FIX: Cast `key` to a valid key type to resolve index signature error.
+                    if (ev.humanScores.disparity[key as keyof typeof ev.humanScores.disparity] === 'yes') {
+                        disparityCounts[key as string]++;
                     }
                 });
                 // Performance Metrics
@@ -1034,8 +1037,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             
             results[model] = {
                 count,
-                avgScores: Object.fromEntries(dimensionKeys.map(k => [k, scoreSums[k] / count])),
-                disparityPercentages: Object.fromEntries(disparityKeys.map(k => [k, (disparityCounts[k] / count) * 100])),
+                avgScores: Object.fromEntries(dimensionKeys.map(k => [k, scoreSums[k as string] / count])),
+                disparityPercentages: Object.fromEntries(disparityKeys.map(k => [k, (disparityCounts[k as string] / count) * 100])),
                 avgGenTimeA: perfMetrics.totalGenTimeA / count,
                 avgGenTimeB: perfMetrics.totalGenTimeB / count,
                 avgAnswerWordsA: perfMetrics.totalAnswerWordsA / count,
@@ -1047,12 +1050,14 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
         const qualityScoresForChart = RUBRIC_DIMENSIONS.map(dim => ({
             label: getShortLabel(dim.label),
-            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.avgScores[dim.key] ?? 0]))
+            // FIX: Cast `dim.key` to string to resolve index signature error.
+            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.avgScores[dim.key as string] ?? 0]))
         }));
 
         const disparityScoresForChart = DISPARITY_CRITERIA.map(crit => ({
             label: crit.label.replace('Disparity in ', ''),
-            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.disparityPercentages[crit.key] ?? 0]))
+            // FIX: Cast `crit.key` to string to resolve index signature error.
+            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.disparityPercentages[crit.key as string] ?? 0]))
         }));
         
         const performanceDataForChart = [
