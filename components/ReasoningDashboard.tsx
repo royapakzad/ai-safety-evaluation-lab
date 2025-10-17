@@ -746,15 +746,36 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         };
     }, [filteredEvaluations]);
 
-    // FIX: Refactor to fix 'unknown' key type issue by removing problematic `in` check.
+    const scoreTableData = useMemo(() => {
+        if (!humanRadarChartData) return null;
+
+        const dimensions = humanRadarChartData.dimensionData;
+        const allDatasets = [
+            ...humanRadarChartData.datasets,
+            ...(llmRadarChartData ? llmRadarChartData.datasets : [])
+        ];
+
+        const headers = allDatasets.map(ds => ds.label);
+
+        const rows = dimensions.map((dim, index) => {
+            const row: { dimension: string, scores: { [header: string]: number } } = {
+                dimension: dim.fullLabel,
+                scores: {}
+            };
+            allDatasets.forEach(ds => {
+                row.scores[ds.label] = ds.values[index];
+            });
+            return row;
+        });
+
+        return { headers, rows };
+    }, [humanRadarChartData, llmRadarChartData]);
+
     const calculateOverallScore = (scores: LanguageSpecificRubricScores | LlmRubricScores): number => {
         const dimensionKeys = RUBRIC_DIMENSIONS.map(d => d.key);
         if (dimensionKeys.length === 0) return 0;
         const totalScore = dimensionKeys.reduce((acc, key) => {
-            // The `key` from RUBRIC_DIMENSIONS is guaranteed to be a key of the scores object.
-            // We cast it to tell typescript what we know.
-            const scoreKey = key as keyof typeof scores;
-            return acc + getNumericScore(scoreKey, scores);
+            return acc + getNumericScore(key, scores);
         }, 0);
         return totalScore / dimensionKeys.length;
     };
@@ -1007,25 +1028,21 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             if (count === 0) return;
 
             // FIX: Explicitly type the records to prevent Object.fromEntries from inferring `unknown` values, which causes downstream errors.
-            const scoreSums: Record<string, number> = Object.fromEntries(dimensionKeys.map(k => [k, 0]));
-            const disparityCounts: Record<string, number> = Object.fromEntries(disparityKeys.map(k => [k, 0]));
+            const scoreSums: Record<string, number> = dimensionKeys.reduce((acc, k) => ({ ...acc, [k]: 0 }), {});
+            const disparityCounts: Record<string, number> = disparityKeys.reduce((acc, k) => ({ ...acc, [k]: 0 }), {});
             const perfMetrics = { totalGenTimeA: 0, totalGenTimeB: 0, totalAnswerWordsA: 0, totalAnswerWordsB: 0 };
             
             evals.forEach(ev => {
                 // Quality Scores
                 dimensionKeys.forEach(key => {
-                    // FIX: Removed unnecessary `as any` type assertion. The `key` type is correct.
                     const scoreA = getNumericScore(key, ev.humanScores.english);
                     const scoreB = getNumericScore(key, ev.humanScores.native);
-                    // FIX: Cast `key` to string to resolve index signature error.
-                    scoreSums[key as string] += (scoreA + scoreB) / 2;
+                    scoreSums[key] += (scoreA + scoreB) / 2;
                 });
                 // Disparity Scores
                 disparityKeys.forEach(key => {
-                    // FIX: Removed unnecessary type assertion. `as const` on DISPARITY_CRITERIA ensures `key` is a valid key.
-                    // FIX: Cast `key` to a valid key type to resolve index signature error.
-                    if (ev.humanScores.disparity[key as keyof typeof ev.humanScores.disparity] === 'yes') {
-                        disparityCounts[key as string]++;
+                    if (ev.humanScores.disparity[key] === 'yes') {
+                        disparityCounts[key]++;
                     }
                 });
                 // Performance Metrics
@@ -1037,8 +1054,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             
             results[model] = {
                 count,
-                avgScores: Object.fromEntries(dimensionKeys.map(k => [k, scoreSums[k as string] / count])),
-                disparityPercentages: Object.fromEntries(disparityKeys.map(k => [k, (disparityCounts[k as string] / count) * 100])),
+                avgScores: dimensionKeys.reduce((acc, k) => ({ ...acc, [k]: scoreSums[k] / count }), {}),
+                disparityPercentages: disparityKeys.reduce((acc, k) => ({...acc, [k]: (disparityCounts[k] / count) * 100 }), {}),
                 avgGenTimeA: perfMetrics.totalGenTimeA / count,
                 avgGenTimeB: perfMetrics.totalGenTimeB / count,
                 avgAnswerWordsA: perfMetrics.totalAnswerWordsA / count,
@@ -1050,14 +1067,12 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
         const qualityScoresForChart = RUBRIC_DIMENSIONS.map(dim => ({
             label: getShortLabel(dim.label),
-            // FIX: Cast `dim.key` to string to resolve index signature error.
-            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.avgScores[dim.key as string] ?? 0]))
+            values: modelsInView.reduce((acc, modelId) => ({ ...acc, [modelId]: results[modelId]?.avgScores[dim.key] ?? 0 }), {})
         }));
 
         const disparityScoresForChart = DISPARITY_CRITERIA.map(crit => ({
             label: crit.label.replace('Disparity in ', ''),
-            // FIX: Cast `crit.key` to string to resolve index signature error.
-            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.disparityPercentages[crit.key as string] ?? 0]))
+            values: modelsInView.reduce((acc, modelId) => ({ ...acc, [modelId]: results[modelId]?.disparityPercentages[crit.key] ?? 0 }), {})
         }));
         
         const performanceDataForChart = [
@@ -1238,6 +1253,33 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                                 return <RadarChart data={combinedRadarData} onLabelClick={handleRadarLabelClick} />;
                            })()}
                         </div>
+                        {scoreTableData && (
+                            <div className="mt-8 pt-4 border-t border-border">
+                                <h4 className="text-md font-semibold text-center text-foreground mb-4">Average Score Breakdown</h4>
+                                <div className="text-xs text-foreground bg-background rounded-lg border border-border/70 overflow-hidden">
+                                    {/* Header */}
+                                    <div className="grid font-bold bg-muted" style={{ gridTemplateColumns: `minmax(150px, 2fr) repeat(${scoreTableData.headers.length}, 1fr)` }}>
+                                        <div className="p-2 border-r border-border/70">Dimension</div>
+                                        {scoreTableData.headers.map(header => (
+                                            <div key={header} className="p-2 text-center border-r border-border/70 last:border-r-0 whitespace-nowrap">
+                                                {header.replace('Human - ', 'H: ').replace('LLM - ', 'L: ').replace('English', 'Eng').replace('Native', 'Nat')}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {/* Rows */}
+                                    {scoreTableData.rows.map(row => (
+                                        <div key={row.dimension} className="grid border-t border-border/70" style={{ gridTemplateColumns: `minmax(150px, 2fr) repeat(${scoreTableData.headers.length}, 1fr)` }}>
+                                            <div className="p-2 border-r border-border/70 font-medium">{row.dimension}</div>
+                                            {scoreTableData.headers.map(header => (
+                                                <div key={header} className="p-2 text-center font-mono">
+                                                    {row.scores[header].toFixed(2)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </DashboardCard>
                     
                     {heatmapData && (
