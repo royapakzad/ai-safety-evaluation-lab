@@ -163,7 +163,6 @@ interface ReasoningLabProps {
 const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
   // View mode state
   const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
-  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Input Mode State
   const [inputMode, setInputMode] = useState<'custom' | 'csv'>('custom');
@@ -630,15 +629,7 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
     }
   }, [selectedCsvScenarioId, csvScenarios, inputMode]);
   
-  const visibleEvaluations = useMemo(() => {
-    const baseList = currentUser.role === 'admin' ? allEvaluations : allEvaluations.filter(ev => ev.userEmail === currentUser.email);
-    if (!searchQuery.trim()) {
-      return baseList;
-    }
-    return baseList.filter(ev => 
-      ev.promptA.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [allEvaluations, currentUser, searchQuery]);
+  const visibleEvaluations = currentUser.role === 'admin' ? allEvaluations : allEvaluations.filter(ev => ev.userEmail === currentUser.email);
 
   const downloadCSV = () => {
     const dataToExport = visibleEvaluations;
@@ -795,21 +786,6 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 pb-4 border-b border-border/70">
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">{currentUser.role === 'admin' ? 'All Comparison Reports' : 'My Comparison Reports'}</h2>
              <div className="flex items-center flex-wrap justify-start sm:justify-end gap-4 mt-4 sm:mt-0">
-                 {viewMode === 'list' && (
-                  <div className="relative flex-grow sm:flex-grow-0">
-                    <input
-                      type="text"
-                      placeholder="Search by Prompt A..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="form-input w-full sm:w-64 pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:ring-2 focus:ring-ring"
-                      aria-label="Search reports by prompt"
-                    />
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none">
-                      <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                 )}
                  <div className="bg-muted p-1 rounded-lg flex items-center text-sm font-medium">
                     <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>List</button>
                     <button onClick={() => setViewMode('dashboard')} className={`px-3 py-1.5 rounded-md transition-colors ${viewMode === 'dashboard' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>Dashboard</button>
@@ -817,79 +793,90 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
                  {visibleEvaluations.length > 0 && <button onClick={downloadCSV} className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 text-sm flex items-center justify-center" aria-label="Download evaluations as CSV"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>Download Full Report</button>}
              </div>
           </div>
-          {allEvaluations.length === 0 ? (
+          {visibleEvaluations.length === 0 ? (
             <div className="text-center py-10 bg-card border border-border rounded-xl shadow-sm"><p className="text-lg text-muted-foreground">No comparison evaluations saved yet.</p></div>
           ) : (
              viewMode === 'list' ? (
                 <div className="space-y-8">
-                  {visibleEvaluations.length > 0 ? (
-                    visibleEvaluations.slice().reverse().map((ev) => {
+                  {visibleEvaluations.slice().reverse().map((ev) => {
                       const canEdit = currentUser.role === 'admin' || currentUser.email === ev.userEmail;
                       return (
                       <details key={ev.id} className={`bg-card text-card-foreground rounded-xl shadow-md border overflow-hidden transition-all duration-300 ${ev.isFlaggedForReview ? 'border-destructive ring-2 ring-destructive' : 'border-border'}`}>
                         <summary className="px-6 py-5 cursor-pointer list-none flex justify-between items-center hover:bg-muted/60">
                           <div className="flex-grow">
                               <h3 className="text-lg font-semibold text-primary">{ev.isFlaggedForReview && '🚩 '}{ev.titleA} vs. {ev.titleB}</h3>
-                              <p className="text-xs text-muted-foreground mt-1">Model: {AVAILABLE_MODELS.find(m => m.id === ev.model)?.name || ev.model} | Language Pair: {ev.languagePair} | Evaluated by {ev.userEmail} on {new Date(ev.timestamp).toLocaleString()}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Model: {AVAILABLE_MODELS.find(m => m.id === ev.model)?.name || ev.model} | Evaluator: {ev.userEmail} | {new Date(ev.timestamp).toLocaleString()}</p>
                           </div>
-                          <div className="flex items-center space-x-4 ml-4">
-                            <div className="text-center">
-                                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${ ev.llmEvaluationStatus === 'completed' ? 'bg-green-100 text-green-800' : ev.llmEvaluationStatus === 'failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' }`}>
-                                    LLM Judge: {ev.llmEvaluationStatus}
-                                </span>
-                            </div>
-                            <div className="details-summary-marker transition-transform transform">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-muted-foreground" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                </svg>
-                            </div>
+                          <div className="ml-4 flex-shrink-0 flex items-center gap-4">
+                             {ev.llmEvaluationStatus === 'pending' && <Tooltip content="LLM evaluation in progress..."><LoadingSpinner size="sm" color="text-primary" /></Tooltip>}
+                             {ev.llmEvaluationStatus === 'failed' && <Tooltip content={`LLM evaluation failed: ${ev.llmEvaluationError}`}><span className="text-destructive text-xl">⚠️</span></Tooltip>}
+                             {ev.llmEvaluationStatus === 'completed' && <Tooltip content="LLM evaluation completed"><span className="text-accent text-xl">🤖</span></Tooltip>}
+                             <div className="text-primary transition-transform duration-200 transform details-summary-marker"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" /></svg></div>
                           </div>
                         </summary>
-                        <div className="px-6 py-6 border-t border-border bg-background/50">
-                            {ev.llmEvaluationStatus === 'completed' && ev.llmScores ? (
-                                <EvaluationComparison humanScores={ev.humanScores} llmScores={ev.llmScores} humanNotes={ev.notes} titleA={ev.titleA} titleB={ev.titleB} />
-                            ) : (
-                                <div className="text-center py-4">
-                                    <p className="text-muted-foreground">{ev.llmEvaluationStatus === 'pending' ? 'LLM evaluation is in progress...' : ev.llmEvaluationStatus === 'failed' ? `LLM evaluation failed: ${ev.llmEvaluationError}` : 'LLM evaluation has not started.'}</p>
-                                </div>
-                            )}
-                             <div className="mt-6 flex justify-end items-center gap-4">
-                                <button
-                                    onClick={() => handleToggleFlagForReview(ev.id)}
-                                    className={`px-3 py-1.5 text-xs font-semibold rounded-full flex items-center gap-2 transition-colors ${ev.isFlaggedForReview ? 'bg-red-100 text-red-800 hover:bg-red-200' : 'bg-muted text-muted-foreground hover:bg-accent/20'}`}
-                                    aria-label={ev.isFlaggedForReview ? 'Unflag this evaluation' : 'Flag for review'}
-                                >
-                                    🚩 {ev.isFlaggedForReview ? 'Flagged' : 'Flag for Review'}
-                                </button>
-                                {canEdit && (
-                                <>
+                        <div className="px-6 py-6 border-t border-border bg-background/50 text-sm space-y-6">
+                          {ev.scenarioContext && (
+                              <div className="mb-4">
+                                  <h4 className="font-semibold text-foreground/90 mb-1.5 text-base">Scenario Context:</h4>
+                                  <p className="italic text-muted-foreground bg-muted p-3 rounded-md text-xs max-h-32 overflow-y-auto custom-scrollbar" tabIndex={0}>{ev.scenarioContext}</p>
+                              </div>
+                          )}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                              <div><h4 className="font-semibold text-foreground/90 mb-1.5 text-base">{ev.titleA} Prompt:</h4><p className="italic text-muted-foreground bg-muted p-3 rounded-md text-xs max-h-32 overflow-y-auto custom-scrollbar" tabIndex={0}>{ev.promptA}</p></div>
+                              <div><h4 className="font-semibold text-foreground/90 mb-1.5 text-base">{ev.titleB} Prompt:</h4><p className="italic text-muted-foreground bg-muted p-3 rounded-md text-xs max-h-32 overflow-y-auto custom-scrollbar" tabIndex={0}>{ev.promptB}</p></div>
+                          </div>
+                          
+                          {ev.llmEvaluationStatus === 'completed' && ev.llmScores ? (
+                              <EvaluationComparison 
+                                  humanScores={ev.humanScores}
+                                  llmScores={ev.llmScores}
+                                  humanNotes={ev.notes}
+                                  titleA={ev.titleA}
+                                  titleB={ev.titleB}
+                              />
+                          ) : (
+                             <div className="text-center py-8 bg-muted rounded-lg">
+                                  <p className="text-muted-foreground">Evaluation comparison will be shown here once the LLM evaluation is complete.</p>
+                                  {ev.llmEvaluationStatus === 'pending' && <div className="mt-4 flex justify-center items-center gap-2"><LoadingSpinner size="sm"/><span>LLM evaluation in progress...</span></div>}
+                                  {ev.llmEvaluationStatus === 'failed' && <p className="mt-2 text-destructive">LLM evaluation failed: {ev.llmEvaluationError}</p>}
+                             </div>
+                          )}
+                          
+                          <div className="mt-6 flex justify-between items-center pt-4 border-t border-border/50">
+                               <div className="flex items-center gap-2">
+                                  {canEdit && (
+                                      <button
+                                          onClick={() => handleStartEdit(ev.id)}
+                                          className="px-4 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 text-primary hover:bg-primary/10"
+                                          aria-label="Edit this evaluation"
+                                      >
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>
+                                          <span>Edit</span>
+                                      </button>
+                                  )}
                                   <button
-                                    onClick={() => handleStartEdit(ev.id)}
-                                    className="px-3 py-1.5 text-xs font-semibold bg-secondary text-secondary-foreground rounded-full hover:bg-muted"
+                                      onClick={() => handleDeleteEvaluation(ev.id)}
+                                      className="px-4 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 text-destructive hover:bg-destructive/10"
+                                      aria-label="Delete this evaluation"
                                   >
-                                    Edit
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 01-8.832 0v-.227a3 3 0 013-3h2.666a3 3 0 013 3zM3.5 6A1.5 1.5 0 002 7.5v9A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0016.5 6h-13zM8 10a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 10zm4 0a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0112 10z" clipRule="evenodd" /></svg>
+                                      <span>Delete Evaluation</span>
                                   </button>
-                                  <button
-                                    onClick={() => handleDeleteEvaluation(ev.id)}
-                                    className="px-3 py-1.5 text-xs font-semibold bg-destructive/10 text-destructive-foreground rounded-full hover:bg-destructive"
-                                  >
-                                    Delete
+                               </div>
+                              <div className="flex items-center gap-2">
+                                  <button onClick={() => handleToggleFlagForReview(ev.id)} className={`px-4 py-2 text-xs font-semibold rounded-lg shadow-sm transition-all duration-200 flex items-center gap-2 ${ev.isFlaggedForReview ? 'bg-destructive/80 text-destructive-foreground hover:bg-destructive' : 'bg-secondary text-secondary-foreground hover:bg-muted'}`} aria-label={ev.isFlaggedForReview ? 'Unflag this evaluation' : 'Flag this evaluation for admin review'}>
+                                      {ev.isFlaggedForReview ? '🚩 Unflag' : 'Flag for Review'}
                                   </button>
-                                </>
-                                )}
-                            </div>
+                              </div>
+                          </div>
                         </div>
                       </details>
-                      )
-                    })
-                  ) : (
-                     <div className="text-center py-10 bg-card border border-border rounded-xl shadow-sm"><p className="text-lg text-muted-foreground">No reports match your search query.</p></div>
-                  )}
+                    )})}
                 </div>
-             ) : (
+            ) : (
                 <ReasoningDashboard evaluations={visibleEvaluations} />
-             )
-           )}
+            )
+          )}
         </section>
     </div>
   );
