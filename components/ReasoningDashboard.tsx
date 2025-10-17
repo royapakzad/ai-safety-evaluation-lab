@@ -1,5 +1,4 @@
 
-
 import React, { useMemo, useState } from 'react';
 import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
@@ -1027,9 +1026,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             const count = evals.length;
             if (count === 0) return;
 
-            // FIX: Explicitly type the records to prevent Object.fromEntries from inferring `unknown` values, which causes downstream errors.
-            const scoreSums: Record<string, number> = dimensionKeys.reduce((acc, k) => ({ ...acc, [k]: 0 }), {});
-            const disparityCounts: Record<string, number> = disparityKeys.reduce((acc, k) => ({ ...acc, [k]: 0 }), {});
+            // FIX: Replace reducer with a cleaner Object.fromEntries to initialize objects, resolving a potential syntax error.
+            const scoreSums: Record<string, number> = Object.fromEntries(dimensionKeys.map(k => [k, 0]));
+            const disparityCounts: Record<string, number> = Object.fromEntries(disparityKeys.map(k => [k, 0]));
             const perfMetrics = { totalGenTimeA: 0, totalGenTimeB: 0, totalAnswerWordsA: 0, totalAnswerWordsB: 0 };
             
             evals.forEach(ev => {
@@ -1054,8 +1053,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             
             results[model] = {
                 count,
-                avgScores: dimensionKeys.reduce((acc, k) => ({ ...acc, [k]: scoreSums[k] / count }), {}),
-                disparityPercentages: disparityKeys.reduce((acc, k) => ({...acc, [k]: (disparityCounts[k] / count) * 100 }), {}),
+                avgScores: Object.fromEntries(dimensionKeys.map(k => [k, scoreSums[k] / count])),
+                disparityPercentages: Object.fromEntries(disparityKeys.map(k => [k, (disparityCounts[k] / count) * 100])),
                 avgGenTimeA: perfMetrics.totalGenTimeA / count,
                 avgGenTimeB: perfMetrics.totalGenTimeB / count,
                 avgAnswerWordsA: perfMetrics.totalAnswerWordsA / count,
@@ -1067,12 +1066,12 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
 
         const qualityScoresForChart = RUBRIC_DIMENSIONS.map(dim => ({
             label: getShortLabel(dim.label),
-            values: modelsInView.reduce((acc, modelId) => ({ ...acc, [modelId]: results[modelId]?.avgScores[dim.key] ?? 0 }), {})
+            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.avgScores[dim.key] ?? 0]))
         }));
 
         const disparityScoresForChart = DISPARITY_CRITERIA.map(crit => ({
             label: crit.label.replace('Disparity in ', ''),
-            values: modelsInView.reduce((acc, modelId) => ({ ...acc, [modelId]: results[modelId]?.disparityPercentages[crit.key] ?? 0 }), {})
+            values: Object.fromEntries(modelsInView.map(modelId => [modelId, results[modelId]?.disparityPercentages[crit.key] ?? 0]))
         }));
         
         const performanceDataForChart = [
