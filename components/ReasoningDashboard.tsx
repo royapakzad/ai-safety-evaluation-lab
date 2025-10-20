@@ -186,16 +186,44 @@ const RadarChart: React.FC<{
                 {data.datasets.map(d => (
                     <div key={d.label} className="flex items-center gap-1.5">
                         <svg width="24" height="12" viewBox="0 0 24 12" className="flex-shrink-0">
-                           <line 
-                               x1="0" y1="6" x2="24" y2="6" 
-                               stroke={d.color} 
-                               strokeWidth="2" 
-                               strokeDasharray={d.dashed ? "4 4" : "none"} 
+                           <line
+                               x1="0" y1="6" x2="24" y2="6"
+                               stroke={d.color}
+                               strokeWidth="2"
+                               strokeDasharray={d.dashed ? "4 4" : "none"}
                            />
                         </svg>
                         <span>{d.label}</span>
                     </div>
                 ))}
+            </div>
+
+            {/* Radar Chart Scores Table */}
+            <div className="mt-6 overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                    <thead>
+                        <tr className="border-b border-border">
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground">Dimension</th>
+                            {data.datasets.map(dataset => (
+                                <th key={dataset.label} className="text-center py-2 px-3 font-medium" style={{ color: dataset.color }}>
+                                    {dataset.label}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.dimensionData.map((dimension, index) => (
+                            <tr key={dimension.key} className="border-b border-border/50 hover:bg-muted/30">
+                                <td className="py-2 px-3 font-medium text-foreground">{dimension.label}</td>
+                                {data.datasets.map(dataset => (
+                                    <td key={dataset.label} className="text-center py-2 px-3 font-mono font-semibold" style={{ color: dataset.color }}>
+                                        {dataset.values[index]?.toFixed(2) || 'N/A'}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -680,7 +708,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     const humanRadarChartData = useMemo(() => {
         if (filteredEvaluations.length === 0) return null;
         const dimensionsToInclude = ['actionability_practicality', 'factuality', 'safety_security_privacy', 'tone_dignity_empathy', 'non_discrimination_fairness', 'freedom_of_access_censorship'] as const;
-        
+
         const dimensionData = RUBRIC_DIMENSIONS
             .filter(dim => (dimensionsToInclude as readonly string[]).includes(dim.key))
             .map(dim => ({
@@ -702,7 +730,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 });
             }
         });
-        
+
         const avgScoresA = sumA.map(v => v / filteredEvaluations.length);
         const avgScoresB = sumB.map(v => v / filteredEvaluations.length);
 
@@ -720,7 +748,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         if (llmCompletedEvals.length === 0) return null;
 
         const dimensions = RUBRIC_DIMENSIONS.map(d => d.key);
-        
+
         const sumLlmA = dimensions.map(() => 0);
         const sumLlmB = dimensions.map(() => 0);
 
