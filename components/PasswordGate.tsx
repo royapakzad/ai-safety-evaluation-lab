@@ -98,7 +98,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSubmit, loginError }) => {
         }
       </p>
       <p className="text-center text-xs text-muted-foreground mt-4 max-w-sm">
-        <a href="https://github.com/royapakzad/llm-multilingual-evaluation-lab" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Check out source code from GitHub</a>
+        <a href="https://github.com/royapakzad/ai-safety-evaluation-lab" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Check out source code from GitHub</a>
       </p>
     </div>
   );
