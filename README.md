@@ -4,7 +4,7 @@
 #### 👩🏻‍💻 Web Platform for Evaluators:  [Multilingual LLM Safety Evaluation Lab](https://ai-safety-evaluation-lab.vercel.app/)
 _To create an account look at section 5. Access Control & Login_
 #### 📽️ Demo video 👇
-[![Watch the video](https://github.com/user-attachments/assets/643224c8-4c1d-4494-9020-43e6dc0ed9a7)](https://drive.google.com/file/d/1HkflXeKmkX8QZwoXb7hPVMnYnRk6014G/view?usp=sharing)
+[![Watch the video](https://github.com/user-attachments/assets/643224c8-4c1d-4494-9020-43e6dc0ed9a7)](https://www.multilingualailab.com/demo)
 
 
 ---
@@ -13,7 +13,7 @@ _To create an account look at section 5. Access Control & Login_
 
 The **Multilingual AI Safety Evaluation Laboratory** is a research tool designed to address an important gap in AI safety: the evaluation of Large Language Models (LLMs) in non-English contexts.
 
-While most LLM development and testing is English-centric, the majority of the world's population does not speak English. This creates a significant blind spot where models may be less helpful, less accurate, or even more dangerous when used in other languages.
+While most LLM development and testing is English-centric, the majority of the world's population does not speak English. This creates a blind spot where models may be less helpful, less accurate, or even more dangerous when used in other languages.
 
 This lab's primary purpose is to empower researchers, developers, and policymakers to rigorously assess **how model performance and safety aspects change across different languages**. It provides the tools to move beyond assumptions and gather concrete evidence, ensuring that AI systems are developed and deployed in a way that is equitable, fair, and safe for global, multilingual populations.
 
