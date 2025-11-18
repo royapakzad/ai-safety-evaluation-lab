@@ -5,8 +5,6 @@ import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimensio
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
 import LoadingSpinner from './LoadingSpinner';
 import Tooltip from './Tooltip';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 // --- HELPER COMPONENTS ---
 
@@ -1176,66 +1174,6 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     };
 
 
-    const exportDashboardAsPDF = async () => {
-        const dashboardElement = document.getElementById('dashboard-content');
-        if (!dashboardElement) return;
-
-        try {
-            // Create a loading state
-            const originalText = 'Download Dashboard PDF';
-
-            // Hide drilldown modal temporarily if open
-            const modal = document.querySelector('[role="dialog"]');
-            const modalDisplay = modal ? (modal as HTMLElement).style.display : '';
-            if (modal) (modal as HTMLElement).style.display = 'none';
-
-            // Create canvas from dashboard content
-            const canvas = await html2canvas(dashboardElement, {
-                scale: 2, // Higher quality
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                scrollX: 0,
-                scrollY: 0,
-                width: dashboardElement.scrollWidth,
-                height: dashboardElement.scrollHeight
-            });
-
-            // Restore modal if it was hidden
-            if (modal && modalDisplay !== 'none') (modal as HTMLElement).style.display = modalDisplay;
-
-            // Create PDF
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/png');
-
-            const imgWidth = 210; // A4 width in mm
-            const pageHeight = 297; // A4 height in mm
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-            let heightLeft = imgHeight;
-
-            let position = 0;
-
-            // Add first page
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-
-            // Add additional pages if needed
-            while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
-
-            // Save the PDF
-            const fileName = `evaluation_dashboard_${selectedLanguagePair}_${selectedModel}_${new Date().toISOString().split('T')[0]}.pdf`;
-            pdf.save(fileName);
-
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            alert('Failed to generate PDF. Please try again.');
-        }
-    };
-
     if (evaluations.length === 0) {
         return <div className="text-center py-10 bg-card border border-border rounded-xl shadow-sm"><p className="text-lg text-muted-foreground">Not enough data to generate a dashboard. Complete at least one evaluation.</p></div>;
     }
@@ -1243,9 +1181,9 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
     return (
         <div className="space-y-8">
             {drilldownData && <DrilldownModal data={drilldownData} onClose={() => setDrilldownData(null)} />}
-
+            
             <DashboardCard title="Dashboard Actions & Filters" subtitle="Select a language pair or model to refine the data across all charts.">
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="lang-pair-filter" className="text-sm font-medium text-foreground mb-1 block">Language Pair</label>
                         <select
@@ -1277,22 +1215,8 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                             })}
                         </select>
                     </div>
-                    <div>
-                        <button
-                            onClick={exportDashboardAsPDF}
-                            className="w-full bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 text-sm flex items-center justify-center"
-                            aria-label="Download dashboard as PDF"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2">
-                                <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zM8 8a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 018 8z" clipRule="evenodd" />
-                            </svg>
-                            Download Dashboard PDF
-                        </button>
-                    </div>
                 </div>
             </DashboardCard>
-
-            <div id="dashboard-content" className="space-y-8">
 
             {!metrics || !humanRadarChartData || !disparityChartData ? (
                  <div className="text-center py-10 bg-card border border-border rounded-xl shadow-sm">
@@ -1452,10 +1376,72 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                         </DashboardCard>
                     )}
                     
+                    {contextAnalysisData && (
+                        <DashboardCard 
+                            title="Context Analysis" 
+                            subtitle="Analyze consistency for specific contexts. For Disparity, lower scores are better. For English/Native, higher scores are better. Dots on the green line indicate perfect agreement."
+                        >
+                            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                               <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
+                                    <button onClick={() => setContextView('list')} className={`px-3 py-1.5 rounded-md transition-colors ${contextView === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>List View</button>
+                                    <button onClick={() => setContextView('plot')} className={`px-3 py-1.5 rounded-md transition-colors ${contextView === 'plot' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>Scatter Plots</button>
+                                </div>
+
+                                {contextView === 'list' ? (
+                                    <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg text-sm font-medium">
+                                        {(['disparity', 'english', 'native'] as const).map(sortBy => (
+                                            <button key={sortBy} onClick={() => setContextSortBy(sortBy)} className={`px-3 py-1.5 rounded-md transition-colors ${contextSortBy === sortBy ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:bg-background/50'}`}>
+                                                {sortBy === 'disparity' ? 'Sort by Disparity' : sortBy === 'english' ? 'Sort by English Score' : 'Sort by Native Score'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-4 text-xs">
+                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary"></span><span>Standard Context</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-destructive"></span><span>Top 5 Disparate</span></div>
+                                    </div>
+                                )}
+                                
+                                {contextView === 'list' && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <label htmlFor="top-n-select" className="text-muted-foreground">Show:</label>
+                                    <select id="top-n-select" value={topNContexts} onChange={e => setTopNContexts(Number(e.target.value))} className="form-select bg-card border-border rounded-md p-1.5 focus:ring-2 focus:ring-ring">
+                                        <option value={3}>Top 3</option>
+                                        <option value={5}>Top 5</option>
+                                        <option value={10}>Top 10</option>
+                                    </select>
+                                </div>
+                                )}
+                            </div>
+                            
+                            {contextView === 'list' ? (
+                                <div className="space-y-3">
+                                    {contextAnalysisData.slice(0, topNContexts).map((data, index) => (
+                                        <button key={index} onClick={() => setDrilldownData({title: `Evaluations for Context: "${data.context}"`, evaluations: data.evaluations})} className="w-full text-left p-3 bg-background rounded-lg border border-border/70 hover:bg-muted/60 transition-colors">
+                                            <p className="font-semibold text-foreground truncate">{data.context}</p>
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1 font-mono">
+                                                <span>Avg Eng: <span className="font-bold text-blue-500">{data.avgEnglish.toFixed(2)}</span></span>
+                                                <span>Avg Nat: <span className="font-bold text-violet-400">{data.avgNative.toFixed(2)}</span></span>
+                                                <span>Avg Disp: <span className="font-bold text-orange-500">{data.avgDisparity.toFixed(2)}</span></span>
+                                                <span className="text-foreground/60">(n={data.count})</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : mergedContextDataForPlots ? (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 -mt-2">
+                                    <ContextScatterPlot data={mergedContextDataForPlots.disparity} title="Disparity Comparison" domain={[0, 4]} topDisparityContexts={top5DisparateContexts} quadrantLabels={DISPARITY_QUADRANT_LABELS} />
+                                    <ContextScatterPlot data={mergedContextDataForPlots.english} title="English Score Comparison" domain={[1, 5]} topDisparityContexts={top5DisparateContexts} quadrantLabels={SCORE_QUADRANT_LABELS} />
+                                    <ContextScatterPlot data={mergedContextDataForPlots.native} title="Native Score Comparison" domain={[1, 5]} topDisparityContexts={top5DisparateContexts} quadrantLabels={SCORE_QUADRANT_LABELS} />
+                                </div>
+                            ) : (
+                                <p className="text-center text-muted-foreground italic py-8">LLM context data is not available for the scatter plot.</p>
+                            )}
+                        </DashboardCard>
+                    )}
 
                 </>
             )}
-            </div>
         </div>
     );
 };
