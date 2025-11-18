@@ -657,7 +657,7 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
   
   const downloadCSV = () => {
     if (visibleEvaluations.length === 0) return alert("No data to export.");
-    
+
     const dataToExport = visibleEvaluations;
     const flattenObject = (obj: any, prefix = ''): any => {
         if (!obj) return { [prefix]: '' };
@@ -689,14 +689,25 @@ const ReasoningLab: React.FC<ReasoningLabProps> = ({ currentUser }) => {
     flattenedData.forEach(row => Object.keys(row).forEach(header => allHeaders.add(header)));
     const headers = Array.from(allHeaders);
     
-    let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + flattenedData.map(row => headers.map(header => `"${String((row as any)[header] ?? '').replace(/"/g, '""')}"`).join(",")).join("\n");
-    
+    const csvContent = headers.join(",") + "\n" + flattenedData.map(row => headers.map(header => `"${String((row as any)[header] ?? '').replace(/"/g, '""')}"`).join(",")).join("\n");
+
+    // Use Blob API to avoid URL length limitations in Chrome/Firefox
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", `llm_multilingual_comparison_evaluations_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    if ((navigator as any).msSaveBlob) {
+      // IE 10+
+      (navigator as any).msSaveBlob(blob, `llm_multilingual_comparison_evaluations_${new Date().toISOString().split('T')[0]}.csv`);
+    } else {
+      // Modern browsers
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `llm_multilingual_comparison_evaluations_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url); // Clean up the URL object
+    }
   };
   
   const visibleEvaluations = allEvaluations.filter(evaluation => {
