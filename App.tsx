@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Theme } from './types';
-import { 
-    USER_KEY, 
+import {
+    USER_KEY,
     THEME_KEY, APP_TITLE
 } from './constants';
 import * as config from './env.js'; // Import API keys from env.js
+import { signIn, signOut, onAuthStateChange, AuthState } from './services/authService';
 import Login from './components/PasswordGate';
 import Header from './components/Header';
 import ApiKeyWarning from './components/ApiKeyWarning';
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   // Core App State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [theme, setTheme] = useState<Theme>('light');
   const [isAnyApiKeyMissingOrPlaceholder, setIsAnyApiKeyMissingOrPlaceholder] = useState<boolean>(false);
 
@@ -56,50 +58,48 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
-  // Auth check on initial load
+  // Firebase Auth state listener
   useEffect(() => {
-    try {
-      const storedUserJson = localStorage.getItem(USER_KEY);
-      if (storedUserJson) {
-        setCurrentUser(JSON.parse(storedUserJson) as User);
-      }
-    } catch (e) {
-      console.warn('Failed to read user session from localStorage:', e);
-    }
+    const unsubscribe = onAuthStateChange((authState: AuthState) => {
+      setCurrentUser(authState.user);
+      setAuthLoading(authState.loading);
+    });
+
+    return unsubscribe; // Clean up listener on component unmount
   }, []);
 
   const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
 
-  const handleLoginSubmit = (email: string, password: string) => {
+  const handleLoginSubmit = async (email: string, password: string) => {
     setLoginError(null);
-    const emailLower = email.toLowerCase().trim();
-
-    // Admin login check using credentials from environment variables (via env.js)
-    // We only attempt admin login if both ADMIN_EMAIL and ADMIN_PASSWORD are set and non-empty.
-    const adminEmail = config.ADMIN_EMAIL ? config.ADMIN_EMAIL.toLowerCase().trim() : '';
-    const adminPassword = config.ADMIN_PASSWORD || '';
-    
-    if (adminEmail && adminPassword && emailLower === adminEmail && password === adminPassword) {
-        const user: User = { email: emailLower, role: 'admin' };
-        setCurrentUser(user);
-        try { localStorage.setItem(USER_KEY, JSON.stringify(user)); } catch (e) { console.warn('Failed to save user to localStorage:', e); }
-    } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower) && emailLower === password) {
-        const user: User = { email: emailLower, role: 'evaluator' };
-        setCurrentUser(user);
-        try { localStorage.setItem(USER_KEY, JSON.stringify(user)); } catch (e) { console.warn('Failed to save user to localStorage:', e); }
-    } else {
-        setLoginError("Invalid credentials. Please check your email and password.");
-    }
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null);
     try {
-        localStorage.removeItem(USER_KEY);
-    } catch (e) {
-        console.warn('Failed to remove user from localStorage on logout:', e);
+      await signIn(email.toLowerCase().trim(), password);
+      // User state will be updated automatically via onAuthStateChange
+    } catch (error: any) {
+      setLoginError(error.message || "Invalid credentials. Please check your email and password.");
     }
   };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      // User state will be updated automatically via onAuthStateChange
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  // Show loading spinner while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) return <Login onLoginSubmit={handleLoginSubmit} loginError={loginError} />;
 
