@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { ReasoningEvaluationRecord, LanguageSpecificRubricScores, RubricDimension, LlmRubricScores } from '../types';
 import { DISPARITY_CRITERIA, RUBRIC_DIMENSIONS, AVAILABLE_MODELS } from '../constants';
+import { summarizeQualitativeText } from '../services/llmService';
 import LoadingSpinner from './LoadingSpinner';
 import Tooltip from './Tooltip';
 import html2canvas from 'html2canvas';
@@ -1157,20 +1158,20 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
         const extractNonEmptyText = (texts: string[]): string[] =>
             texts.filter(text => text && text.trim().length > 0);
 
-        // Collect human qualitative data
+        // Collect ALL human qualitative data
         const humanDetailsTexts: string[] = [];
         const humanOverallAssessments: string[] = [];
 
-        // Collect LLM qualitative data
+        // Collect ALL LLM qualitative data
         const llmDetailsTexts: string[] = [];
         const llmOverallAssessments: string[] = [];
 
         filteredEvaluations.forEach(evaluation => {
-            // Human scores details
+            // Human scores details - collect ALL detail fields
             if (evaluation.humanScores) {
                 const { english, native, disparity } = evaluation.humanScores;
 
-                // Details from English and Native scores
+                // Details from English and Native scores (all detail fields)
                 [english, native].forEach(scores => {
                     humanDetailsTexts.push(
                         scores.non_discrimination_fairness_details,
@@ -1179,7 +1180,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     );
                 });
 
-                // Details from disparity analysis
+                // Details from ALL disparity analysis fields
                 humanDetailsTexts.push(
                     disparity.disparity_in_actionability_details,
                     disparity.disparity_in_factuality_details,
@@ -1196,11 +1197,11 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                 humanOverallAssessments.push(evaluation.notes);
             }
 
-            // LLM scores details (if available)
+            // LLM scores details - collect ALL detail fields (if available)
             if (evaluation.llmScores) {
                 const { english, native, disparity } = evaluation.llmScores;
 
-                // Details from English and Native scores
+                // Details from English and Native scores (all detail fields)
                 [english, native].forEach(scores => {
                     llmDetailsTexts.push(
                         scores.non_discrimination_fairness_details,
@@ -1209,7 +1210,7 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     );
                 });
 
-                // Details from disparity analysis
+                // Details from ALL disparity analysis fields
                 llmDetailsTexts.push(
                     disparity.disparity_in_actionability_details,
                     disparity.disparity_in_factuality_details,
@@ -1227,52 +1228,26 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             }
         });
 
-        // Filter out empty strings and summarize
+        // Filter out empty strings
         const nonEmptyHumanDetails = extractNonEmptyText(humanDetailsTexts);
         const nonEmptyHumanAssessments = extractNonEmptyText(humanOverallAssessments);
         const nonEmptyLlmDetails = extractNonEmptyText(llmDetailsTexts);
         const nonEmptyLlmAssessments = extractNonEmptyText(llmOverallAssessments);
 
-        // Simple summarization: extract key themes and most frequent concerns
-        const summarizeTexts = (texts: string[]): string[] => {
-            if (texts.length === 0) return [];
-
-            // Join all texts and split into sentences
-            const allText = texts.join('. ').toLowerCase();
-            const sentences = texts.flatMap(text =>
-                text.split(/[.!?]+/).filter(s => s.trim().length > 10)
-            );
-
-            // Extract key concerns and themes (simple keyword-based approach)
-            const keyTerms = [
-                'bias', 'discrimination', 'unfair', 'harmful', 'inappropriate',
-                'inaccurate', 'misleading', 'false', 'wrong', 'error',
-                'safety', 'security', 'privacy', 'dangerous', 'risk',
-                'censorship', 'restriction', 'limited', 'blocked', 'denied',
-                'disparity', 'difference', 'inconsistent', 'varies', 'unequal'
-            ];
-
-            const relevantSentences = sentences.filter(sentence =>
-                keyTerms.some(term => sentence.toLowerCase().includes(term))
-            ).slice(0, 5); // Top 5 most relevant
-
-            return relevantSentences.length > 0 ? relevantSentences : sentences.slice(0, 3);
-        };
-
         return {
             human: {
                 detailsCount: nonEmptyHumanDetails.length,
-                detailsSummary: summarizeTexts(nonEmptyHumanDetails),
+                detailsSummary: [], // Will be populated by async call
                 assessmentsCount: nonEmptyHumanAssessments.length,
-                assessmentsSummary: summarizeTexts(nonEmptyHumanAssessments),
+                assessmentsSummary: [], // Will be populated by async call
                 allDetails: nonEmptyHumanDetails,
                 allAssessments: nonEmptyHumanAssessments
             },
             llm: {
                 detailsCount: nonEmptyLlmDetails.length,
-                detailsSummary: summarizeTexts(nonEmptyLlmDetails),
+                detailsSummary: [], // Will be populated by async call
                 assessmentsCount: nonEmptyLlmAssessments.length,
-                assessmentsSummary: summarizeTexts(nonEmptyLlmAssessments),
+                assessmentsSummary: [], // Will be populated by async call
                 allDetails: nonEmptyLlmDetails,
                 allAssessments: nonEmptyLlmAssessments
             },
@@ -1280,6 +1255,72 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
             llmEvaluationsCount: filteredEvaluations.filter(e => e.llmScores).length
         };
     }, [filteredEvaluations]);
+
+    // State for managing async summarization
+    const [qualitativeSummaries, setQualitativeSummaries] = useState<{
+        humanDetails: string[];
+        humanAssessments: string[];
+        llmDetails: string[];
+        llmAssessments: string[];
+        loading: boolean;
+        error: string | null;
+    }>({
+        humanDetails: [],
+        humanAssessments: [],
+        llmDetails: [],
+        llmAssessments: [],
+        loading: false,
+        error: null
+    });
+
+    // Effect to perform async summarization when qualitativeAnalysis changes
+    React.useEffect(() => {
+        if (!qualitativeAnalysis) return;
+
+        const performSummarization = async () => {
+            setQualitativeSummaries(prev => ({ ...prev, loading: true, error: null }));
+
+            try {
+                const [humanDetailsSummary, humanAssessmentsSummary, llmDetailsSummary, llmAssessmentsSummary] = await Promise.all([
+                    summarizeQualitativeText(qualitativeAnalysis.human.allDetails, 'details', 'human'),
+                    summarizeQualitativeText(qualitativeAnalysis.human.allAssessments, 'assessments', 'human'),
+                    summarizeQualitativeText(qualitativeAnalysis.llm.allDetails, 'details', 'llm'),
+                    summarizeQualitativeText(qualitativeAnalysis.llm.allAssessments, 'assessments', 'llm')
+                ]);
+
+                setQualitativeSummaries({
+                    humanDetails: humanDetailsSummary,
+                    humanAssessments: humanAssessmentsSummary,
+                    llmDetails: llmDetailsSummary,
+                    llmAssessments: llmAssessmentsSummary,
+                    loading: false,
+                    error: null
+                });
+            } catch (error) {
+                console.error('Error performing qualitative summarization:', error);
+                setQualitativeSummaries(prev => ({
+                    ...prev,
+                    loading: false,
+                    error: 'Failed to generate AI summary. Please check your Gemini API key.'
+                }));
+            }
+        };
+
+        // Only perform summarization if there's actual text to analyze
+        if (qualitativeAnalysis.human.detailsCount > 0 || qualitativeAnalysis.human.assessmentsCount > 0 ||
+            qualitativeAnalysis.llm.detailsCount > 0 || qualitativeAnalysis.llm.assessmentsCount > 0) {
+            performSummarization();
+        } else {
+            setQualitativeSummaries({
+                humanDetails: [],
+                humanAssessments: [],
+                llmDetails: [],
+                llmAssessments: [],
+                loading: false,
+                error: null
+            });
+        }
+    }, [qualitativeAnalysis]);
 
 
     const handleDisparityBarClick = (label: string, category: 'yes' | 'no' | 'unsure', source: 'human' | 'llm') => {
@@ -1460,141 +1501,183 @@ const ReasoningDashboard: React.FC<ReasoningDashboardProps> = ({ evaluations }) 
                     {qualitativeAnalysis && (
                         <DashboardCard
                             title="Qualitative Analysis Summary"
-                            subtitle={`Key themes from evaluator comments and detailed assessments across ${qualitativeAnalysis.totalEvaluations} evaluation(s). Human analysis: ${qualitativeAnalysis.human.detailsCount} detail comments, ${qualitativeAnalysis.human.assessmentsCount} overall notes. LLM analysis: ${qualitativeAnalysis.llm.detailsCount} detail comments, ${qualitativeAnalysis.llm.assessmentsCount} overall notes.`}
+                            subtitle={`AI-powered theme analysis from evaluator comments across ${qualitativeAnalysis.totalEvaluations} evaluation(s). Human analysis: ${qualitativeAnalysis.human.detailsCount} detail comments, ${qualitativeAnalysis.human.assessmentsCount} overall notes. LLM analysis: ${qualitativeAnalysis.llm.detailsCount} detail comments, ${qualitativeAnalysis.llm.assessmentsCount} overall notes.`}
                         >
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {/* Human Analysis */}
-                                <div className="space-y-4">
-                                    <h4 className="font-semibold text-foreground flex items-center gap-2">
-                                        <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-sm">👤 Human</span>
-                                        Qualitative Insights
-                                    </h4>
-
-                                    {/* Details Summary */}
-                                    <div className="bg-background border border-border rounded-lg p-4">
-                                        <h5 className="font-medium text-foreground mb-2 text-sm">
-                                            Key Issues from Detail Comments ({qualitativeAnalysis.human.detailsCount} entries)
-                                        </h5>
-                                        {qualitativeAnalysis.human.detailsSummary.length > 0 ? (
-                                            <ul className="space-y-1 text-xs">
-                                                {qualitativeAnalysis.human.detailsSummary.map((summary, index) => (
-                                                    <li key={index} className="text-muted-foreground">
-                                                        <span className="text-primary">•</span> {summary.trim()}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p className="text-xs text-muted-foreground italic">No detailed comments provided.</p>
-                                        )}
-                                    </div>
-
-                                    {/* Overall Assessment Summary */}
-                                    <div className="bg-background border border-border rounded-lg p-4">
-                                        <h5 className="font-medium text-foreground mb-2 text-sm">
-                                            Overall Assessment Themes ({qualitativeAnalysis.human.assessmentsCount} entries)
-                                        </h5>
-                                        {qualitativeAnalysis.human.assessmentsSummary.length > 0 ? (
-                                            <ul className="space-y-1 text-xs">
-                                                {qualitativeAnalysis.human.assessmentsSummary.map((summary, index) => (
-                                                    <li key={index} className="text-muted-foreground">
-                                                        <span className="text-primary">•</span> {summary.trim()}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p className="text-xs text-muted-foreground italic">No overall assessment notes provided.</p>
-                                        )}
-                                    </div>
+                            {qualitativeSummaries.error && (
+                                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                    <p className="text-sm text-red-700 dark:text-red-300">{qualitativeSummaries.error}</p>
                                 </div>
+                            )}
 
-                                {/* LLM Analysis */}
-                                <div className="space-y-4">
-                                    <h4 className="font-semibold text-foreground flex items-center gap-2">
-                                        <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded text-sm">🤖 LLM</span>
-                                        Qualitative Insights
-                                    </h4>
+                            {qualitativeSummaries.loading && (
+                                <div className="flex items-center justify-center py-8">
+                                    <LoadingSpinner />
+                                    <span className="ml-2 text-sm text-muted-foreground">Generating AI summary using Gemini...</span>
+                                </div>
+                            )}
 
-                                    {qualitativeAnalysis.llm.detailsCount > 0 ? (
-                                        <>
-                                            {/* Details Summary */}
-                                            <div className="bg-background border border-border rounded-lg p-4">
-                                                <h5 className="font-medium text-foreground mb-2 text-sm">
-                                                    Key Issues from Detail Comments ({qualitativeAnalysis.llm.detailsCount} entries)
-                                                </h5>
-                                                {qualitativeAnalysis.llm.detailsSummary.length > 0 ? (
-                                                    <ul className="space-y-1 text-xs">
-                                                        {qualitativeAnalysis.llm.detailsSummary.map((summary, index) => (
-                                                            <li key={index} className="text-muted-foreground">
-                                                                <span className="text-primary">•</span> {summary.trim()}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground italic">No detailed comments provided.</p>
-                                                )}
-                                            </div>
+                            {!qualitativeSummaries.loading && (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    {/* Human Analysis */}
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-foreground flex items-center gap-2">
+                                            <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-sm">👤 Human</span>
+                                            Qualitative Insights
+                                        </h4>
 
-                                            {/* Overall Assessment Summary */}
-                                            <div className="bg-background border border-border rounded-lg p-4">
-                                                <h5 className="font-medium text-foreground mb-2 text-sm">
-                                                    Overall Assessment Themes ({qualitativeAnalysis.llm.assessmentsCount} entries)
-                                                </h5>
-                                                {qualitativeAnalysis.llm.assessmentsSummary.length > 0 ? (
-                                                    <ul className="space-y-1 text-xs">
-                                                        {qualitativeAnalysis.llm.assessmentsSummary.map((summary, index) => (
-                                                            <li key={index} className="text-muted-foreground">
-                                                                <span className="text-primary">•</span> {summary.trim()}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground italic">No overall assessment notes provided.</p>
-                                                )}
-                                            </div>
-                                        </>
-                                    ) : (
+                                        {/* Details Summary */}
                                         <div className="bg-background border border-border rounded-lg p-4">
-                                            <p className="text-xs text-muted-foreground italic text-center py-4">
-                                                No LLM qualitative analysis available.
-                                                {qualitativeAnalysis.llmEvaluationsCount === 0 ?
-                                                    ' Run LLM evaluations to see automated insights.' :
-                                                    ' LLM provided numeric scores but no detailed comments.'
-                                                }
-                                            </p>
+                                            <h5 className="font-medium text-foreground mb-2 text-sm flex items-center gap-2">
+                                                <span>Key Themes from Detail Comments ({qualitativeAnalysis.human.detailsCount} entries)</span>
+                                                {qualitativeAnalysis.human.detailsCount > 0 && (
+                                                    <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded text-xs">✨ AI Summary</span>
+                                                )}
+                                            </h5>
+                                            {qualitativeSummaries.humanDetails.length > 0 ? (
+                                                <ul className="space-y-1.5 text-xs">
+                                                    {qualitativeSummaries.humanDetails.map((summary, index) => (
+                                                        <li key={index} className="text-muted-foreground leading-relaxed">
+                                                            <span className="text-primary">•</span> {summary.trim()}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : qualitativeAnalysis.human.detailsCount > 0 ? (
+                                                <p className="text-xs text-muted-foreground italic">Generating summary...</p>
+                                            ) : (
+                                                <p className="text-xs text-muted-foreground italic">No detailed comments provided.</p>
+                                            )}
                                         </div>
-                                    )}
+
+                                        {/* Overall Assessment Summary */}
+                                        <div className="bg-background border border-border rounded-lg p-4">
+                                            <h5 className="font-medium text-foreground mb-2 text-sm flex items-center gap-2">
+                                                <span>Overall Assessment Themes ({qualitativeAnalysis.human.assessmentsCount} entries)</span>
+                                                {qualitativeAnalysis.human.assessmentsCount > 0 && (
+                                                    <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded text-xs">✨ AI Summary</span>
+                                                )}
+                                            </h5>
+                                            {qualitativeSummaries.humanAssessments.length > 0 ? (
+                                                <ul className="space-y-1.5 text-xs">
+                                                    {qualitativeSummaries.humanAssessments.map((summary, index) => (
+                                                        <li key={index} className="text-muted-foreground leading-relaxed">
+                                                            <span className="text-primary">•</span> {summary.trim()}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : qualitativeAnalysis.human.assessmentsCount > 0 ? (
+                                                <p className="text-xs text-muted-foreground italic">Generating summary...</p>
+                                            ) : (
+                                                <p className="text-xs text-muted-foreground italic">No overall assessment notes provided.</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* LLM Analysis */}
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-foreground flex items-center gap-2">
+                                            <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded text-sm">🤖 LLM</span>
+                                            Qualitative Insights
+                                        </h4>
+
+                                        {qualitativeAnalysis.llm.detailsCount > 0 || qualitativeAnalysis.llm.assessmentsCount > 0 ? (
+                                            <>
+                                                {/* Details Summary */}
+                                                <div className="bg-background border border-border rounded-lg p-4">
+                                                    <h5 className="font-medium text-foreground mb-2 text-sm flex items-center gap-2">
+                                                        <span>Key Themes from Detail Comments ({qualitativeAnalysis.llm.detailsCount} entries)</span>
+                                                        {qualitativeAnalysis.llm.detailsCount > 0 && (
+                                                            <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded text-xs">✨ AI Summary</span>
+                                                        )}
+                                                    </h5>
+                                                    {qualitativeSummaries.llmDetails.length > 0 ? (
+                                                        <ul className="space-y-1.5 text-xs">
+                                                            {qualitativeSummaries.llmDetails.map((summary, index) => (
+                                                                <li key={index} className="text-muted-foreground leading-relaxed">
+                                                                    <span className="text-primary">•</span> {summary.trim()}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : qualitativeAnalysis.llm.detailsCount > 0 ? (
+                                                        <p className="text-xs text-muted-foreground italic">Generating summary...</p>
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground italic">No detailed comments provided.</p>
+                                                    )}
+                                                </div>
+
+                                                {/* Overall Assessment Summary */}
+                                                <div className="bg-background border border-border rounded-lg p-4">
+                                                    <h5 className="font-medium text-foreground mb-2 text-sm flex items-center gap-2">
+                                                        <span>Overall Assessment Themes ({qualitativeAnalysis.llm.assessmentsCount} entries)</span>
+                                                        {qualitativeAnalysis.llm.assessmentsCount > 0 && (
+                                                            <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded text-xs">✨ AI Summary</span>
+                                                        )}
+                                                    </h5>
+                                                    {qualitativeSummaries.llmAssessments.length > 0 ? (
+                                                        <ul className="space-y-1.5 text-xs">
+                                                            {qualitativeSummaries.llmAssessments.map((summary, index) => (
+                                                                <li key={index} className="text-muted-foreground leading-relaxed">
+                                                                    <span className="text-primary">•</span> {summary.trim()}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : qualitativeAnalysis.llm.assessmentsCount > 0 ? (
+                                                        <p className="text-xs text-muted-foreground italic">Generating summary...</p>
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground italic">No overall assessment notes provided.</p>
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="bg-background border border-border rounded-lg p-4">
+                                                <p className="text-xs text-muted-foreground italic text-center py-4">
+                                                    No LLM qualitative analysis available.
+                                                    {qualitativeAnalysis.llmEvaluationsCount === 0 ?
+                                                        ' Run LLM evaluations to see automated insights.' :
+                                                        ' LLM provided numeric scores but no detailed comments.'
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Summary Statistics */}
-                            <div className="mt-6 pt-4 border-t border-border">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                                        <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                                            {qualitativeAnalysis.human.detailsCount}
+                            {!qualitativeSummaries.loading && (
+                                <div className="mt-6 pt-4 border-t border-border">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                                            <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                                                {qualitativeAnalysis.human.detailsCount}
+                                            </div>
+                                            <div className="text-xs text-blue-600 dark:text-blue-400">Human Details</div>
                                         </div>
-                                        <div className="text-xs text-blue-600 dark:text-blue-400">Human Details</div>
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                                            <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                                                {qualitativeAnalysis.human.assessmentsCount}
+                                            </div>
+                                            <div className="text-xs text-blue-600 dark:text-blue-400">Human Notes</div>
+                                        </div>
+                                        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
+                                            <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                                                {qualitativeAnalysis.llm.detailsCount}
+                                            </div>
+                                            <div className="text-xs text-purple-600 dark:text-purple-400">LLM Details</div>
+                                        </div>
+                                        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
+                                            <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                                                {qualitativeAnalysis.llm.assessmentsCount}
+                                            </div>
+                                            <div className="text-xs text-purple-600 dark:text-purple-400">LLM Notes</div>
+                                        </div>
                                     </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                                        <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                                            {qualitativeAnalysis.human.assessmentsCount}
-                                        </div>
-                                        <div className="text-xs text-blue-600 dark:text-blue-400">Human Notes</div>
-                                    </div>
-                                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-                                        <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
-                                            {qualitativeAnalysis.llm.detailsCount}
-                                        </div>
-                                        <div className="text-xs text-purple-600 dark:text-purple-400">LLM Details</div>
-                                    </div>
-                                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-                                        <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
-                                            {qualitativeAnalysis.llm.assessmentsCount}
-                                        </div>
-                                        <div className="text-xs text-purple-600 dark:text-purple-400">LLM Notes</div>
+                                    <div className="mt-4 text-center">
+                                        <p className="text-xs text-muted-foreground">
+                                            Summaries generated by Gemini AI analyzing all qualitative text from evaluation details and assessments
+                                        </p>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </DashboardCard>
                     )}
 
