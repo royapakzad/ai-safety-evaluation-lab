@@ -35,28 +35,22 @@ const App: React.FC = () => {
     }
   }, []);
   
-  // Theme management
+  // Theme management - Force light mode only
   useEffect(() => {
-    let initialTheme: Theme = 'light';
-    try {
-      const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
-      if (storedTheme) initialTheme = storedTheme;
-      else initialTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    } catch (e) {
-      console.warn('Could not access localStorage or matchMedia for theme.', e);
-    }
-    setTheme(initialTheme);
+    // Always use light theme
+    setTheme('light');
   }, []);
 
   useEffect(() => {
+    // Force light mode
     document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(theme);
+    document.documentElement.classList.add('light');
     try {
-      localStorage.setItem(THEME_KEY, theme);
+      localStorage.setItem(THEME_KEY, 'light');
     } catch (e) {
       console.warn('Failed to save theme to localStorage:', e);
     }
-  }, [theme]);
+  }, []);
 
   // Firebase Auth state listener
   useEffect(() => {
@@ -68,7 +62,10 @@ const App: React.FC = () => {
     return unsubscribe; // Clean up listener on component unmount
   }, []);
 
-  const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+  // Theme toggle disabled - always light mode
+  const toggleTheme = () => {
+    // Do nothing - theme is locked to light mode
+  };
 
   const handleLoginSubmit = async (email: string, password: string) => {
     setLoginError(null);
