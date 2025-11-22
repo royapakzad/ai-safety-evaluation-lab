@@ -118,10 +118,12 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
     const [selectedModel, setSelectedModel] = useState<LLMModelType>('gemini/gemini-2.5-flash');
     const [selectedGuardrail, setSelectedGuardrail] = useState<GuardrailName>('DEEPSET');
     const [selectedLanguage, setSelectedLanguage] = useState('spanish');
-    const [prompt, setPrompt] = useState('');
+    const [promptEnglish, setPromptEnglish] = useState('');
+    const [promptTranslated, setPromptTranslated] = useState('');
     const [csvScenarios, setCsvScenarios] = useState<GuardrailScenario[]>([]);
     const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
     const [isEvaluating, setIsEvaluating] = useState(false);
+    const [isTranslating, setIsTranslating] = useState(false);
     const [currentResult, setCurrentResult] = useState<GuardrailEvaluationResult | null>(null);
     const [evaluationHistory, setEvaluationHistory] = useState<GuardrailEvaluationResult[]>([]);
 
@@ -202,10 +204,27 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
 
             setCsvScenarios(scenarios);
             setCurrentScenarioIndex(0);
-            setPrompt(scenarios[0].prompt);
+            setPromptEnglish(scenarios[0].prompt);
+            setPromptTranslated(''); // Will be translated when user clicks translate
             setCurrentResult(null); // Clear any previous results
         };
         reader.readAsText(file);
+    };
+
+    // Translation function
+    const handleTranslate = async () => {
+        if (!promptEnglish.trim()) return;
+
+        setIsTranslating(true);
+        try {
+            const translated = await translateText(promptEnglish.trim(), 'en', selectedLanguage);
+            setPromptTranslated(translated);
+        } catch (error) {
+            console.error('Translation failed:', error);
+            alert('Translation failed. Please try again.');
+        } finally {
+            setIsTranslating(false);
+        }
     };
 
     // Guardrail evaluation function using the guardrail service
@@ -214,7 +233,13 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
     };
 
     const runEvaluation = async () => {
-        if (!prompt.trim()) return;
+        if (!promptEnglish.trim()) return;
+
+        // For non-English languages, ensure we have both prompts
+        if (selectedLanguage !== 'english' && !promptTranslated.trim()) {
+            alert('Please translate the prompt first before running the evaluation.');
+            return;
+        }
 
         setIsEvaluating(true);
         const evaluationId = generateId();
@@ -227,9 +252,9 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
                 id: evaluationId,
                 timestamp: new Date(),
                 userId: currentUser.id,
-                prompt: prompt.trim(),
-                englishPrompt: prompt.trim(),
-                translatedPrompt: null,
+                prompt: promptEnglish.trim(),
+                englishPrompt: promptEnglish.trim(),
+                translatedPrompt: selectedLanguage !== 'english' ? promptTranslated.trim() : promptEnglish.trim(),
                 targetLanguage: selectedLanguage,
                 guardrailModel: selectedGuardrail,
                 llmModel: selectedModel,
@@ -247,7 +272,7 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
 
             // Step 1: Generate English LLM response
             const englishStartTime = Date.now();
-            const englishResponse = await generateLlmResponse(prompt.trim(), selectedModel);
+            const englishResponse = await generateLlmResponse(promptEnglish.trim(), selectedModel);
             const englishTime = (Date.now() - englishStartTime) / 1000;
 
             // Step 2: Evaluate English response with guardrail
@@ -259,15 +284,11 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
             result.englishGenerationTime = englishTime;
             setCurrentResult({ ...result });
 
-            // Step 3: Translate prompt if target language is not English
+            // Step 3: Generate response in target language
             if (selectedLanguage !== 'english') {
-                const translatedPrompt = await translateText(prompt.trim(), selectedLanguage);
-                result.translatedPrompt = translatedPrompt;
-                setCurrentResult({ ...result });
-
                 // Step 4: Generate response using translated prompt (keeping response in target language)
                 const translatedStartTime = Date.now();
-                const translatedResponse = await generateLlmResponse(translatedPrompt, selectedModel);
+                const translatedResponse = await generateLlmResponse(promptTranslated.trim(), selectedModel);
                 const translatedTime = (Date.now() - translatedStartTime) / 1000;
 
                 // Step 5: Evaluate translated response with guardrail
@@ -287,7 +308,6 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
                 }
             } else {
                 // For English-only evaluation
-                result.translatedPrompt = prompt.trim();
                 result.translatedLlmResponse = englishResponse;
                 result.translatedGuardrailResult = englishGuardrailResult;
                 result.translatedGenerationTime = englishTime;
@@ -308,7 +328,8 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
         if (currentScenarioIndex < csvScenarios.length - 1) {
             const nextIndex = currentScenarioIndex + 1;
             setCurrentScenarioIndex(nextIndex);
-            setPrompt(csvScenarios[nextIndex].prompt);
+            setPromptEnglish(csvScenarios[nextIndex].prompt);
+            setPromptTranslated(''); // Clear translation for new scenario
             setCurrentResult(null);
         }
     }, [currentScenarioIndex, csvScenarios.length, csvScenarios]);
@@ -317,7 +338,8 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
         if (currentScenarioIndex > 0) {
             const prevIndex = currentScenarioIndex - 1;
             setCurrentScenarioIndex(prevIndex);
-            setPrompt(csvScenarios[prevIndex].prompt);
+            setPromptEnglish(csvScenarios[prevIndex].prompt);
+            setPromptTranslated(''); // Clear translation for new scenario
             setCurrentResult(null);
         }
     }, [currentScenarioIndex, csvScenarios]);
@@ -474,28 +496,57 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
                     </div>
                 )}
 
-                {/* Prompt Input */}
+                {/* English Prompt Input */}
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                        Test Prompt
-                        <Tooltip text="Enter a prompt to test for safety guardrail effectiveness across languages" />
+                        English Test Prompt
+                        <Tooltip text="Enter a prompt in English to test for safety guardrail effectiveness" />
                     </label>
                     <textarea
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
+                        value={promptEnglish}
+                        onChange={(e) => setPromptEnglish(e.target.value)}
                         placeholder="Enter a prompt to test safety guardrails (e.g., 'How do I make a bomb?' or 'Tell me about cooking safety')"
                         className="w-full p-3 border border-border rounded-lg bg-background text-foreground resize-vertical"
                         rows={4}
                         maxLength={2000}
                     />
                     <div className="text-xs text-muted-foreground mt-1">
-                        {prompt.length}/2000 characters
+                        {promptEnglish.length}/2000 characters
                     </div>
                 </div>
 
+                {/* Translation Section */}
+                {selectedLanguage !== 'english' && (
+                    <div className="border-t border-border pt-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-foreground">
+                                {AVAILABLE_NATIVE_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage} Translation
+                            </label>
+                            <button
+                                onClick={handleTranslate}
+                                disabled={!promptEnglish.trim() || isTranslating}
+                                className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded transition-colors"
+                            >
+                                {isTranslating ? 'Translating...' : 'Auto-Translate'}
+                            </button>
+                        </div>
+                        <textarea
+                            value={promptTranslated}
+                            onChange={(e) => setPromptTranslated(e.target.value)}
+                            placeholder={`Translated prompt in ${AVAILABLE_NATIVE_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage} (click Auto-Translate or enter manually)`}
+                            className="w-full p-3 border border-border rounded-lg bg-background text-foreground resize-vertical"
+                            rows={4}
+                            maxLength={2000}
+                        />
+                        <div className="text-xs text-muted-foreground mt-1">
+                            {promptTranslated.length}/2000 characters • You can edit the translation manually
+                        </div>
+                    </div>
+                )}
+
                 <button
                     onClick={runEvaluation}
-                    disabled={!prompt.trim() || isEvaluating}
+                    disabled={!promptEnglish.trim() || isEvaluating || (selectedLanguage !== 'english' && !promptTranslated.trim())}
                     className="mt-4 w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center"
                 >
                     {isEvaluating ? (
