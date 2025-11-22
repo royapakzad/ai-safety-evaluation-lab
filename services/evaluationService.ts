@@ -11,4 +11,9 @@ console.warn("evaluationService.ts is deprecated. Please use databaseService.ts 
 // The original functions have been removed and their logic is now in databaseService.ts
 // and the components that use it.
 
-export {}; // Ensure this is treated as a module.
+/**
+ * Generate a unique ID for evaluations
+ */
+export const generateId = (): string => {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+};
