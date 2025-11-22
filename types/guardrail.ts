@@ -5,7 +5,10 @@ export type GuardrailName =
   | 'LLAMA_GUARD'
   | 'OPENAI_MODERATION'
   | 'ANTHROPIC_CONSTITUTIONAL'
-  | 'MICROSOFT_PRESIDIO';
+  | 'MICROSOFT_PRESIDIO'
+  | 'GLIDER'
+  | 'SHIELD_GEMMA'
+  | 'FLOWJUDGE';
 
 export interface GuardrailOutput {
   valid: boolean;
