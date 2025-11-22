@@ -29,11 +29,12 @@ const createMarkup = (markdownText: string | undefined | null) => {
 
 const GuardrailResultCard: React.FC<{
   title: string;
+  prompt: string | null;
   llmResponse: string | null;
   guardrailResult: GuardrailOutput | null;
   isLoading: boolean;
   generationTime?: number | null;
-}> = ({ title, llmResponse, guardrailResult, isLoading, generationTime }) => (
+}> = ({ title, prompt, llmResponse, guardrailResult, isLoading, generationTime }) => (
     <div className="bg-card text-card-foreground p-6 rounded-xl shadow-md border border-border flex-1 min-h-[300px] flex flex-col">
         <div className="flex justify-between items-start mb-3.5 border-b border-border pb-3">
             <h3 className="text-lg font-semibold text-foreground">{title}</h3>
@@ -50,6 +51,16 @@ const GuardrailResultCard: React.FC<{
             </div>
         ) : (
             <div className="flex-1 flex flex-col space-y-4">
+                {/* Prompt */}
+                {prompt && (
+                    <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Prompt:</h4>
+                        <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                            <p className="text-sm text-foreground break-words">{prompt}</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* LLM Response */}
                 <div className="flex-1">
                     <h4 className="text-sm font-medium text-muted-foreground mb-2">LLM Response:</h4>
@@ -140,25 +151,59 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             const text = e.target?.result as string;
-            const lines = text.split('\n').slice(1); // Skip header
+            const lines = text.split('\n').filter(line => line.trim());
+
+            if (lines.length < 2) {
+                alert('CSV file must have at least a header row and one data row.');
+                return;
+            }
+
+            // Parse CSV with proper handling of quoted values
+            const parseCsvLine = (line: string): string[] => {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"' && (i === 0 || line[i-1] === ',')) {
+                        inQuotes = true;
+                    } else if (char === '"' && inQuotes) {
+                        inQuotes = false;
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(current);
+                return result.map(field => field.trim().replace(/^"|"$/g, ''));
+            };
+
             const scenarios: GuardrailScenario[] = lines
-                .filter(line => line.trim())
+                .slice(1) // Skip header
                 .map(line => {
-                    const [prompt, expectedOutcome, category, riskLevel, notes] = line.split(',');
+                    const [prompt, expectedOutcome, category, riskLevel, notes] = parseCsvLine(line);
                     return {
-                        prompt: prompt?.replace(/"/g, '') || '',
-                        expectedOutcome: expectedOutcome?.replace(/"/g, '') as 'block' | 'allow' | 'unknown' || 'unknown',
-                        category: category?.replace(/"/g, '') || '',
-                        riskLevel: riskLevel?.replace(/"/g, '') as 'low' | 'medium' | 'high' || 'medium',
-                        notes: notes?.replace(/"/g, '') || ''
+                        prompt: prompt || '',
+                        expectedOutcome: (expectedOutcome?.toLowerCase() as 'block' | 'allow' | 'unknown') || 'unknown',
+                        category: category || '',
+                        riskLevel: (riskLevel?.toLowerCase() as 'low' | 'medium' | 'high') || 'medium',
+                        notes: notes || ''
                     };
-                });
+                })
+                .filter(scenario => scenario.prompt.trim()); // Only keep scenarios with prompts
+
+            if (scenarios.length === 0) {
+                alert('No valid scenarios found in CSV file. Make sure the first column contains prompts.');
+                return;
+            }
 
             setCsvScenarios(scenarios);
             setCurrentScenarioIndex(0);
-            if (scenarios.length > 0) {
-                setPrompt(scenarios[0].prompt);
-            }
+            setPrompt(scenarios[0].prompt);
+            setCurrentResult(null); // Clear any previous results
         };
         reader.readAsText(file);
     };
@@ -218,8 +263,9 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
             if (selectedLanguage !== 'english') {
                 const translatedPrompt = await translateText(prompt.trim(), selectedLanguage);
                 result.translatedPrompt = translatedPrompt;
+                setCurrentResult({ ...result });
 
-                // Step 4: Generate translated LLM response
+                // Step 4: Generate response using translated prompt (keeping response in target language)
                 const translatedStartTime = Date.now();
                 const translatedResponse = await generateLlmResponse(translatedPrompt, selectedModel);
                 const translatedTime = (Date.now() - translatedStartTime) / 1000;
@@ -258,23 +304,42 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
         }
     };
 
-    const nextScenario = () => {
+    const nextScenario = useCallback(() => {
         if (currentScenarioIndex < csvScenarios.length - 1) {
             const nextIndex = currentScenarioIndex + 1;
             setCurrentScenarioIndex(nextIndex);
             setPrompt(csvScenarios[nextIndex].prompt);
             setCurrentResult(null);
         }
-    };
+    }, [currentScenarioIndex, csvScenarios.length, csvScenarios]);
 
-    const previousScenario = () => {
+    const previousScenario = useCallback(() => {
         if (currentScenarioIndex > 0) {
             const prevIndex = currentScenarioIndex - 1;
             setCurrentScenarioIndex(prevIndex);
             setPrompt(csvScenarios[prevIndex].prompt);
             setCurrentResult(null);
         }
-    };
+    }, [currentScenarioIndex, csvScenarios]);
+
+    // Add keyboard navigation
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            // Only handle if CSV scenarios are loaded and no input is focused
+            if (csvScenarios.length > 0 && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+                if (event.key === 'ArrowLeft' && event.ctrlKey) {
+                    event.preventDefault();
+                    previousScenario();
+                } else if (event.key === 'ArrowRight' && event.ctrlKey) {
+                    event.preventDefault();
+                    nextScenario();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [csvScenarios.length, nextScenario, previousScenario]);
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -363,28 +428,49 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
 
                 {/* CSV Navigation */}
                 {csvScenarios.length > 0 && (
-                    <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-blue-800 dark:text-blue-200">
+                    <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
                                 Scenario {currentScenarioIndex + 1} of {csvScenarios.length}
                             </span>
                             <div className="flex space-x-2">
                                 <button
                                     onClick={previousScenario}
                                     disabled={currentScenarioIndex === 0}
-                                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    Previous
+                                    ← Previous
                                 </button>
                                 <button
                                     onClick={nextScenario}
                                     disabled={currentScenarioIndex === csvScenarios.length - 1}
-                                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    Next
+                                    Next →
                                 </button>
                             </div>
                         </div>
+
+                        {/* Current Scenario Details */}
+                        {csvScenarios[currentScenarioIndex] && (
+                            <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                                {csvScenarios[currentScenarioIndex].category && (
+                                    <div><strong>Category:</strong> {csvScenarios[currentScenarioIndex].category}</div>
+                                )}
+                                {csvScenarios[currentScenarioIndex].riskLevel && (
+                                    <div><strong>Risk Level:</strong> {csvScenarios[currentScenarioIndex].riskLevel}</div>
+                                )}
+                                {csvScenarios[currentScenarioIndex].expectedOutcome && (
+                                    <div><strong>Expected:</strong> {csvScenarios[currentScenarioIndex].expectedOutcome}</div>
+                                )}
+                                {csvScenarios[currentScenarioIndex].notes && (
+                                    <div><strong>Notes:</strong> {csvScenarios[currentScenarioIndex].notes}</div>
+                                )}
+                                <div className="text-xs opacity-75 mt-2">
+                                    💡 Use Ctrl+← and Ctrl+→ to navigate scenarios
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -429,6 +515,7 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
                     <div className="flex flex-col lg:flex-row gap-6">
                         <GuardrailResultCard
                             title="English Evaluation"
+                            prompt={currentResult.englishPrompt}
                             llmResponse={currentResult.englishLlmResponse}
                             guardrailResult={currentResult.englishGuardrailResult}
                             isLoading={isEvaluating && !currentResult.englishLlmResponse}
@@ -438,6 +525,7 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
                         {selectedLanguage !== 'english' && (
                             <GuardrailResultCard
                                 title={`${AVAILABLE_NATIVE_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage} Evaluation`}
+                                prompt={currentResult.translatedPrompt}
                                 llmResponse={currentResult.translatedLlmResponse}
                                 guardrailResult={currentResult.translatedGuardrailResult}
                                 isLoading={isEvaluating && !currentResult.translatedLlmResponse}
