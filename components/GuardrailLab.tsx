@@ -202,7 +202,7 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
 
             // Step 1: Generate English LLM response
             const englishStartTime = Date.now();
-            const englishResponse = await generateLlmResponse(selectedModel, prompt.trim());
+            const englishResponse = await generateLlmResponse(prompt.trim(), selectedModel);
             const englishTime = (Date.now() - englishStartTime) / 1000;
 
             // Step 2: Evaluate English response with guardrail
@@ -221,7 +221,7 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
 
                 // Step 4: Generate translated LLM response
                 const translatedStartTime = Date.now();
-                const translatedResponse = await generateLlmResponse(selectedModel, translatedPrompt);
+                const translatedResponse = await generateLlmResponse(translatedPrompt, selectedModel);
                 const translatedTime = (Date.now() - translatedStartTime) / 1000;
 
                 // Step 5: Evaluate translated response with guardrail
