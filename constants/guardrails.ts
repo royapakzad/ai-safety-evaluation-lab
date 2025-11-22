@@ -25,6 +25,27 @@ export const AVAILABLE_GUARDRAILS: GuardrailModel[] = [
     available: true
   },
   {
+    id: 'GLIDER',
+    name: 'Glider',
+    description: 'Advanced content safety guardrail with high precision detection.',
+    provider: 'Glider AI',
+    available: true
+  },
+  {
+    id: 'SHIELD_GEMMA',
+    name: 'Shield Gemma',
+    description: 'Google\'s Shield Gemma model for safety classification and content filtering.',
+    provider: 'Google',
+    available: true
+  },
+  {
+    id: 'FLOWJUDGE',
+    name: 'FlowJudge',
+    description: 'FlowJudge guardrail for content safety and quality assessment.',
+    provider: 'FlowJudge AI',
+    available: true
+  },
+  {
     id: 'ANTHROPIC_CONSTITUTIONAL',
     name: 'Anthropic Constitutional',
     description: 'Anthropic\'s Constitutional AI approach for safety.',
