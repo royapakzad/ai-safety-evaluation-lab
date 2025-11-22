@@ -104,7 +104,7 @@ const GuardrailResultCard: React.FC<{
 );
 
 const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
-    const [selectedModel, setSelectedModel] = useState<LLMModelType>('gemini-1.5-flash');
+    const [selectedModel, setSelectedModel] = useState<LLMModelType>('gemini/gemini-2.5-flash');
     const [selectedGuardrail, setSelectedGuardrail] = useState<GuardrailName>('DEEPSET');
     const [selectedLanguage, setSelectedLanguage] = useState('spanish');
     const [prompt, setPrompt] = useState('');
@@ -302,7 +302,7 @@ const GuardrailLab: React.FC<GuardrailLabProps> = ({ currentUser, onBack }) => {
                         <ModelSelector
                             selectedModel={selectedModel}
                             onModelChange={setSelectedModel}
-                            availableModels={AVAILABLE_MODELS}
+                            models={AVAILABLE_MODELS}
                         />
                     </div>
 
