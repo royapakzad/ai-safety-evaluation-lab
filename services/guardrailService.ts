@@ -125,6 +125,27 @@ class GuardrailService {
           spam: ['spam', 'promotional', 'advertisement']
         };
 
+      case 'GLIDER':
+        return {
+          ...basePatterns,
+          advanced_threats: ['sophisticated attack', 'social engineering', 'manipulation'],
+          context_awareness: ['implicit threat', 'coded language', 'veiled reference']
+        };
+
+      case 'SHIELD_GEMMA':
+        return {
+          ...basePatterns,
+          gemma_safety: ['unsafe generation', 'harmful instruction', 'dangerous request'],
+          instruction_following: ['ignore instructions', 'bypass safety', 'override protection']
+        };
+
+      case 'FLOWJUDGE':
+        return {
+          ...basePatterns,
+          flow_analysis: ['conversation manipulation', 'goal hijacking', 'context switching'],
+          quality_assessment: ['low quality', 'nonsensical', 'irrelevant response']
+        };
+
       default:
         return basePatterns;
     }
@@ -135,6 +156,9 @@ class GuardrailService {
       'DEEPSET': 'Deepset Guardrail',
       'LLAMA_GUARD': 'Llama Guard',
       'OPENAI_MODERATION': 'OpenAI Moderation',
+      'GLIDER': 'Glider',
+      'SHIELD_GEMMA': 'Shield Gemma',
+      'FLOWJUDGE': 'FlowJudge',
       'ANTHROPIC_CONSTITUTIONAL': 'Anthropic Constitutional',
       'MICROSOFT_PRESIDIO': 'Microsoft Presidio'
     };
@@ -146,6 +170,9 @@ class GuardrailService {
       'DEEPSET': 'Deepset\'s model detected potentially harmful language patterns.',
       'LLAMA_GUARD': 'Llama Guard identified content that violates safety guidelines.',
       'OPENAI_MODERATION': 'OpenAI\'s moderation API flagged this content as potentially harmful.',
+      'GLIDER': 'Glider detected advanced safety threats or sophisticated harmful content.',
+      'SHIELD_GEMMA': 'Shield Gemma identified unsafe content patterns or instruction violations.',
+      'FLOWJUDGE': 'FlowJudge detected problematic conversation flow or quality issues.',
       'ANTHROPIC_CONSTITUTIONAL': 'Constitutional AI principles suggest this content should be restricted.',
       'MICROSOFT_PRESIDIO': 'Microsoft Presidio detected sensitive information or policy violations.'
     };
@@ -163,7 +190,7 @@ class GuardrailService {
    */
   async getAvailableGuardrails(): Promise<GuardrailName[]> {
     // In production, this would query the Python backend for available models
-    return ['DEEPSET', 'LLAMA_GUARD', 'OPENAI_MODERATION'];
+    return ['DEEPSET', 'LLAMA_GUARD', 'OPENAI_MODERATION', 'GLIDER', 'SHIELD_GEMMA', 'FLOWJUDGE'];
   }
 
   /**
