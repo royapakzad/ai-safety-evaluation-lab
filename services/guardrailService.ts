@@ -125,11 +125,25 @@ class GuardrailService {
           spam: ['spam', 'promotional', 'advertisement']
         };
 
-      case 'GLIDER':
+      case 'GLIDER_SAFETY':
         return {
           ...basePatterns,
           advanced_threats: ['sophisticated attack', 'social engineering', 'manipulation'],
-          context_awareness: ['implicit threat', 'coded language', 'veiled reference']
+          physical_harm: ['injury', 'damage', 'destroy', 'break']
+        };
+
+      case 'GLIDER_TOXICITY':
+        return {
+          harassment: ['hate', 'threaten', 'bully', 'harass', 'discriminate', 'racist', 'sexist'],
+          toxic_content: ['toxic', 'offensive', 'inappropriate', 'abusive', 'insulting'],
+          hate_speech: ['nazi', 'terrorist', 'extremist', 'bigot']
+        };
+
+      case 'GLIDER_MISINFORMATION':
+        return {
+          misinformation: ['conspiracy', 'fake news', 'lies', 'hoax', 'propaganda'],
+          medical_misinfo: ['cure covid', 'vaccine dangerous', 'alternative medicine'],
+          science_denial: ['flat earth', 'climate hoax', 'evolution fake']
         };
 
       case 'SHIELD_GEMMA':
@@ -156,7 +170,9 @@ class GuardrailService {
       'DEEPSET': 'Deepset Guardrail',
       'LLAMA_GUARD': 'Llama Guard',
       'OPENAI_MODERATION': 'OpenAI Moderation',
-      'GLIDER': 'Glider',
+      'GLIDER_SAFETY': 'Glider Safety',
+      'GLIDER_TOXICITY': 'Glider Toxicity',
+      'GLIDER_MISINFORMATION': 'Glider Misinformation',
       'SHIELD_GEMMA': 'Shield Gemma',
       'FLOWJUDGE': 'FlowJudge',
       'ANTHROPIC_CONSTITUTIONAL': 'Anthropic Constitutional',
@@ -170,7 +186,9 @@ class GuardrailService {
       'DEEPSET': 'Deepset\'s model detected potentially harmful language patterns.',
       'LLAMA_GUARD': 'Llama Guard identified content that violates safety guidelines.',
       'OPENAI_MODERATION': 'OpenAI\'s moderation API flagged this content as potentially harmful.',
-      'GLIDER': 'Glider detected advanced safety threats or sophisticated harmful content.',
+      'GLIDER_SAFETY': 'Glider Safety detected harmful, dangerous, or unsafe content that could cause physical or psychological harm.',
+      'GLIDER_TOXICITY': 'Glider Toxicity identified toxic, abusive, hateful, or discriminatory language.',
+      'GLIDER_MISINFORMATION': 'Glider Misinformation detected false information, conspiracy theories, or misleading claims.',
       'SHIELD_GEMMA': 'Shield Gemma identified unsafe content patterns or instruction violations.',
       'FLOWJUDGE': 'FlowJudge detected problematic conversation flow or quality issues.',
       'ANTHROPIC_CONSTITUTIONAL': 'Constitutional AI principles suggest this content should be restricted.',
@@ -190,7 +208,7 @@ class GuardrailService {
    */
   async getAvailableGuardrails(): Promise<GuardrailName[]> {
     // In production, this would query the Python backend for available models
-    return ['DEEPSET', 'LLAMA_GUARD', 'OPENAI_MODERATION', 'GLIDER', 'SHIELD_GEMMA', 'FLOWJUDGE'];
+    return ['DEEPSET', 'LLAMA_GUARD', 'OPENAI_MODERATION', 'GLIDER_SAFETY', 'GLIDER_TOXICITY', 'GLIDER_MISINFORMATION', 'SHIELD_GEMMA', 'FLOWJUDGE'];
   }
 
   /**
