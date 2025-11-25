@@ -25,10 +25,24 @@ export const AVAILABLE_GUARDRAILS: GuardrailModel[] = [
     available: true
   },
   {
-    id: 'GLIDER',
-    name: 'Glider',
-    description: 'Advanced content safety guardrail with high precision detection.',
-    provider: 'Glider AI',
+    id: 'GLIDER_SAFETY',
+    name: 'Glider Safety',
+    description: 'PatronusAI Glider model for safety evaluation - detects harmful, dangerous, or unsafe content.',
+    provider: 'PatronusAI',
+    available: true
+  },
+  {
+    id: 'GLIDER_TOXICITY',
+    name: 'Glider Toxicity',
+    description: 'PatronusAI Glider model for toxicity detection - identifies abusive, hateful, or discriminatory language.',
+    provider: 'PatronusAI',
+    available: true
+  },
+  {
+    id: 'GLIDER_MISINFORMATION',
+    name: 'Glider Misinformation',
+    description: 'PatronusAI Glider model for misinformation detection - identifies false claims and conspiracy theories.',
+    provider: 'PatronusAI',
     available: true
   },
   {
