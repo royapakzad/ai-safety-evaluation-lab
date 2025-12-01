@@ -12,8 +12,6 @@ import Login from './components/PasswordGate';
 import Header from './components/Header';
 import ApiKeyWarning from './components/ApiKeyWarning';
 import ReasoningLab from './components/ReasoningLab';
-import LabSelector, { LabType } from './components/LabSelector';
-import GuardrailLab from './components/GuardrailLab';
 
 const App: React.FC = () => {
   // Core App State
@@ -22,7 +20,6 @@ const App: React.FC = () => {
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [theme, setTheme] = useState<Theme>('light');
   const [isAnyApiKeyMissingOrPlaceholder, setIsAnyApiKeyMissingOrPlaceholder] = useState<boolean>(false);
-  const [selectedLab, setSelectedLab] = useState<LabType | null>(null);
 
   // Check for API Keys on mount
   useEffect(() => {
@@ -89,39 +86,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLabSelect = (lab: LabType) => {
-    setSelectedLab(lab);
-  };
-
-  const handleBackToSelector = () => {
-    setSelectedLab(null);
-  };
-
-  const renderCurrentLab = () => {
-    if (!selectedLab) {
-      return <LabSelector currentUser={currentUser!} onLabSelect={handleLabSelect} />;
-    }
-
-    switch (selectedLab) {
-      case 'multilingual-ai':
-        return (
-          <div>
-            <button
-              onClick={handleBackToSelector}
-              className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-            >
-              ← Back to Labs
-            </button>
-            <ReasoningLab currentUser={currentUser!} />
-          </div>
-        );
-      case 'guardrail-evaluation':
-        return <GuardrailLab currentUser={currentUser!} onBack={handleBackToSelector} />;
-      default:
-        return <LabSelector currentUser={currentUser!} onLabSelect={handleLabSelect} />;
-    }
-  };
-
   // Show loading spinner while checking authentication
   if (authLoading) {
     return (
@@ -140,17 +104,16 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {isAnyApiKeyMissingOrPlaceholder && <ApiKeyWarning />}
       <Header 
-        title={APP_TITLE}
-        user={currentUser}
-        currentTheme={theme}
-        onThemeToggle={toggleTheme}
+        title={APP_TITLE} 
+        user={currentUser} 
+        currentTheme={theme} 
+        onThemeToggle={toggleTheme} 
         onLogout={handleLogout}
-        showBack={!!selectedLab}
-        onBack={selectedLab ? handleBackToSelector : undefined}
+        showBack={false}
       />
       
       <main className="flex-grow container mx-auto p-4 sm:p-6 md:p-8" aria-live="polite">
-        {renderCurrentLab()}
+        <ReasoningLab currentUser={currentUser} />
       </main>
 
       <footer className="text-center py-6 border-t border-border text-xs text-muted-foreground">
